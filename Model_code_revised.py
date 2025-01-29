@@ -371,3 +371,38 @@ if st.sidebar.button("Run Optimization") and optimize_portfolio:
 
     else:
         st.error("Please fetch data first.")
+
+
+def calculate_var_cvar(portfolio_returns, confidence_level=0.95):
+    """Calculate Value at Risk (VaR) and Conditional Value at Risk (CVaR)"""
+    sorted_returns = np.sort(portfolio_returns)
+    index = int((1 - confidence_level) * len(sorted_returns))
+    var = abs(sorted_returns[index])
+    cvar = abs(sorted_returns[:index].mean())
+    return var, cvar
+
+st.sidebar.header("Risk Analytics")
+risk_analysis = st.sidebar.checkbox("Run Risk Analytics")
+confidence_level = st.sidebar.slider("Confidence Level (%)", 90, 99, 95) / 100
+
+if st.sidebar.button("Run Risk Analytics"):
+    if 'all_returns' in st.session_state:
+        all_returns = st.session_state['all_returns']
+        returns_df = pd.DataFrame(all_returns).dropna()
+        
+        if 'optimized_weights' in st.session_state:
+            weights = st.session_state['optimized_weights']
+        else:
+            weights = np.array([weight / 100 for weight in weights[:len(all_returns)]])
+        
+        portfolio_returns = np.dot(returns_df, weights)
+        var, cvar = calculate_var_cvar(portfolio_returns, confidence_level)
+
+        st.write(f"### Portfolio Risk Metrics at {confidence_level * 100:.0f}% Confidence")
+        st.metric(label="Value at Risk (VaR)", value=f"{var:.4f}")
+        st.metric(label="Conditional Value at Risk (CVaR)", value=f"{cvar:.4f}")
+        
+        fig = px.histogram(portfolio_returns, nbins=50, title="Portfolio Return Distribution")
+        st.plotly_chart(fig)
+    else:
+        st.error("Please fetch data first.")
