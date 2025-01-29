@@ -1,18 +1,159 @@
 
 
 
+# import streamlit as st
+# import numpy as np
+# import pandas as pd
+# import requests
+# import plotly.graph_objects as go
+# from datetime import datetime
+
+# import scipy.optimize as sco
+
+# import plotly.express as px
+# import plotly.graph_objects as go
+# from datetime import datetime, timedelta
+
+# st.set_page_config(page_title="Enhanced Portfolio VaR and CVaR Calculator", layout="wide")
+
+# # API Key
+# API_KEY = '0uTB4phKEr4dHcB2zJMmVmKUcywpkxDQ'
+
+# # Caching data fetching for efficiency
+# @st.cache_data
+# def fetch_stock_data(stock_name, start_date, end_date, API_KEY):
+#     url = f"https://financialmodelingprep.com/api/v3/historical-price-full/{stock_name}?from={start_date}&to={end_date}&apikey={API_KEY}"
+#     try:
+#         response = requests.get(url)
+#         data = response.json()
+#         if 'historical' not in data or not data['historical']:
+#             return None, f"No data available for {stock_name} in the selected range."
+#         df = pd.DataFrame(data['historical'])
+#         df['date'] = pd.to_datetime(df['date'])
+#         df = df.sort_values('date')
+#         return df['close'].values, None
+#     except Exception as e:
+#         return None, f"Error fetching stock data: {str(e)}"
+
+# # Sidebar inputs
+# st.sidebar.header("Portfolio Configuration")
+# portfolio_value = st.sidebar.number_input("Portfolio Value (in USD):", min_value=0.0, value=100000.0, step=1000.0, format="%.2f")
+# n = st.sidebar.slider("Number of Stocks (up to 10):", 1, 10, 2)
+
+# stock_names = []
+# weights = [100.0]
+
+# for i in range(n):
+#     if i >= len(weights):
+#         weights.append(0.0)
+
+#     col1, col2 = st.sidebar.columns(2)
+#     with col1:
+#         stock_name = st.text_input(f"Stock Ticker {i + 1}:", key=f"stock_{i}")
+#     with col2:
+#         weight = st.number_input(f"Weight (%) {i + 1}:", value=weights[i], min_value=0.0, max_value=100.0, step=1.0, key=f"weight_{i}")
+#         weights[i] = weight
+
+#     stock_names.append(stock_name)
+
+#     # Adjust weights dynamically
+#     if sum(weights) > 100.0:
+#         diff = sum(weights) - 100.0
+#         weights[i] -= diff
+#         st.sidebar.warning("Weights have been automatically adjusted to sum to 100%.")
+
+# # Display the total weight
+# st.sidebar.write(f"Total Weight: {sum(weights):.2f}%")
+
+
+# # Set end date to today's date and start date to one year before
+# default_end_date = datetime.today()
+# default_start_date = default_end_date - timedelta(days=365)
+
+# # Sidebar inputs for date range
+# start_date = st.sidebar.date_input("Start Date:", default_start_date)
+# end_date = st.sidebar.date_input("End Date:", default_end_date)
+
+# # Validate the date inputs
+# if start_date >= end_date:
+#     st.sidebar.error("Start date must be earlier than end date.")
+
+
+
+# # Fetch and process stock data
+# if st.sidebar.button("Fetch Data"):
+#     if abs(sum(weights) - 100) > 0.01:
+#         st.sidebar.error("Weights must sum to 100%.")
+#     else:
+#         portfolio_returns = []
+#         all_returns = {}
+#         min_length = None  # To track the shortest length of stock returns
+#         for i, stock_name in enumerate(stock_names):
+#             stock_data, error_message = fetch_stock_data(stock_name, start_date.isoformat(), end_date.isoformat(), API_KEY)
+#             if stock_data is not None:
+#                 returns = np.diff(stock_data) / stock_data[:-1]
+#                 if min_length is None or len(returns) < min_length:
+#                     min_length = len(returns)  # Update the minimum length
+#                 weighted_returns = returns * weights[i] / 100
+#                 portfolio_returns.append(weighted_returns)
+#                 all_returns[stock_name] = returns
+#             else:
+#                 st.error(error_message)
+#                 break
+
+#         # Truncate all returns to the same length
+#         if portfolio_returns:
+#             portfolio_returns = [r[:min_length] for r in portfolio_returns]
+#             portfolio_returns = np.sum(portfolio_returns, axis=0)
+#             st.session_state['portfolio_returns'] = portfolio_returns
+#             st.session_state['all_returns'] = {
+#                 name: ret[:min_length] for name, ret in all_returns.items()
+#             }
+#             st.success("Data fetched successfully!")
+#         else:
+#             st.error("Failed to fetch stock data.")
+
+
+# # Helper function for metrics
+# @st.cache_data
+# def calculate_metrics(portfolio_returns):
+#     mean_return = np.mean(portfolio_returns)
+#     std_dev = np.std(portfolio_returns)
+#     sharpe_ratio = mean_return / std_dev if std_dev != 0 else 0
+#     return mean_return, std_dev, sharpe_ratio
+
+# # VaR and CVaR calculations
+# def calculate_var(returns, confidence_level, method, portfolio_value):
+#     if method == "Historical":
+#         var = np.percentile(returns, 100 - confidence_level)
+#     elif method == "Variance-Covariance":
+#         mean = np.mean(returns)
+#         sigma = np.std(returns)
+#         z_score = -(stats.norm.ppf(1 - confidence_level / 100))
+#         var = -(mean + z_score * sigma)
+#     elif method == "Monte Carlo":
+#         simulations = 10000
+#         mean = np.mean(returns)
+#         sigma = np.std(returns)
+#         simulated_returns = np.random.normal(mean, sigma, simulations)
+#         a = -(np.percentile(simulated_returns, 100 - confidence_level))
+#         var= -(a)
+#     return var * portfolio_value 
+
+# def calculate_cvar(returns, confidence_level, method, portfolio_value):
+#     var = calculate_var(returns, confidence_level, method, portfolio_value)
+#     cvar = np.mean(returns[returns <= var])
+#     return cvar
+
 import streamlit as st
 import numpy as np
 import pandas as pd
 import requests
 import plotly.graph_objects as go
-from datetime import datetime
-
-import scipy.optimize as sco
-
-import plotly.express as px
-import plotly.graph_objects as go
 from datetime import datetime, timedelta
+import scipy.optimize as sco
+import plotly.express as px
+from scipy import stats
 
 st.set_page_config(page_title="Enhanced Portfolio VaR and CVaR Calculator", layout="wide")
 
@@ -41,82 +182,71 @@ portfolio_value = st.sidebar.number_input("Portfolio Value (in USD):", min_value
 n = st.sidebar.slider("Number of Stocks (up to 10):", 1, 10, 2)
 
 stock_names = []
-weights = [100.0]
+weights = []
 
 for i in range(n):
-    if i >= len(weights):
-        weights.append(0.0)
-
     col1, col2 = st.sidebar.columns(2)
     with col1:
         stock_name = st.text_input(f"Stock Ticker {i + 1}:", key=f"stock_{i}")
     with col2:
-        weight = st.number_input(f"Weight (%) {i + 1}:", value=weights[i], min_value=0.0, max_value=100.0, step=1.0, key=f"weight_{i}")
-        weights[i] = weight
+        weight = st.number_input(f"Weight (%) {i + 1}:", min_value=0.0, max_value=100.0, step=1.0, key=f"weight_{i}")
 
     stock_names.append(stock_name)
+    weights.append(weight)
 
-    # Adjust weights dynamically
-    if sum(weights) > 100.0:
-        diff = sum(weights) - 100.0
-        weights[i] -= diff
-        st.sidebar.warning("Weights have been automatically adjusted to sum to 100%.")
+if sum(weights) > 100:
+    st.sidebar.error("Total weight cannot exceed 100%. Adjust weights.")
+elif sum(weights) < 100:
+    st.sidebar.warning("Total weight is less than 100%. Consider adjusting.")
 
-# Display the total weight
 st.sidebar.write(f"Total Weight: {sum(weights):.2f}%")
 
-
-# Set end date to today's date and start date to one year before
+# Date inputs
 default_end_date = datetime.today()
 default_start_date = default_end_date - timedelta(days=365)
 
-# Sidebar inputs for date range
 start_date = st.sidebar.date_input("Start Date:", default_start_date)
 end_date = st.sidebar.date_input("End Date:", default_end_date)
 
-# Validate the date inputs
 if start_date >= end_date:
     st.sidebar.error("Start date must be earlier than end date.")
 
-
-
-# Fetch and process stock data
+# Fetch stock data
 if st.sidebar.button("Fetch Data"):
     if abs(sum(weights) - 100) > 0.01:
         st.sidebar.error("Weights must sum to 100%.")
     else:
         portfolio_returns = []
         all_returns = {}
-        min_length = None  # To track the shortest length of stock returns
+        min_length = None
+
         for i, stock_name in enumerate(stock_names):
             stock_data, error_message = fetch_stock_data(stock_name, start_date.isoformat(), end_date.isoformat(), API_KEY)
             if stock_data is not None:
                 returns = np.diff(stock_data) / stock_data[:-1]
                 if min_length is None or len(returns) < min_length:
-                    min_length = len(returns)  # Update the minimum length
-                weighted_returns = returns * weights[i] / 100
+                    min_length = len(returns)
+                weighted_returns = returns * (weights[i] / 100)
                 portfolio_returns.append(weighted_returns)
                 all_returns[stock_name] = returns
             else:
                 st.error(error_message)
                 break
 
-        # Truncate all returns to the same length
         if portfolio_returns:
             portfolio_returns = [r[:min_length] for r in portfolio_returns]
             portfolio_returns = np.sum(portfolio_returns, axis=0)
             st.session_state['portfolio_returns'] = portfolio_returns
-            st.session_state['all_returns'] = {
-                name: ret[:min_length] for name, ret in all_returns.items()
-            }
+            st.session_state['all_returns'] = {name: ret[:min_length] for name, ret in all_returns.items()}
             st.success("Data fetched successfully!")
         else:
             st.error("Failed to fetch stock data.")
 
-
 # Helper function for metrics
 @st.cache_data
 def calculate_metrics(portfolio_returns):
+    if len(portfolio_returns) == 0:
+        return None, None, None  # Return None for invalid metrics
     mean_return = np.mean(portfolio_returns)
     std_dev = np.std(portfolio_returns)
     sharpe_ratio = mean_return / std_dev if std_dev != 0 else 0
@@ -124,6 +254,8 @@ def calculate_metrics(portfolio_returns):
 
 # VaR and CVaR calculations
 def calculate_var(returns, confidence_level, method, portfolio_value):
+    if len(returns) == 0:
+        return None
     if method == "Historical":
         var = np.percentile(returns, 100 - confidence_level)
     elif method == "Variance-Covariance":
@@ -136,14 +268,15 @@ def calculate_var(returns, confidence_level, method, portfolio_value):
         mean = np.mean(returns)
         sigma = np.std(returns)
         simulated_returns = np.random.normal(mean, sigma, simulations)
-        a = -(np.percentile(simulated_returns, 100 - confidence_level))
-        var= -(a)
+        var = -(np.percentile(simulated_returns, 100 - confidence_level))
     return var * portfolio_value 
 
 def calculate_cvar(returns, confidence_level, method, portfolio_value):
     var = calculate_var(returns, confidence_level, method, portfolio_value)
+    if var is None:
+        return None
     cvar = np.mean(returns[returns <= var])
-    return cvar
+    return cvar * portfolio_value
 
 def plot_returns(returns):
     fig = go.Figure()
@@ -207,13 +340,76 @@ def calculate_sortino_ratio(portfolio_returns, risk_free_rate, target_return=0.0
 
 
 # Combined Risk Metrics Calculation
-if st.button("Calculate Metrics"):
-    if 'portfolio_returns' in st.session_state:
-        returns = st.session_state['portfolio_returns']
+# if st.button("Calculate Metrics"):
+#     if 'portfolio_returns' in st.session_state:
+#         returns = st.session_state['portfolio_returns']
 
-        # Basic metrics
+#         # Basic metrics
+#         mean_return, std_dev, sharpe_ratio = calculate_metrics(returns)
+#         st.write(f"### Basic Metrics")
+#         st.write(f"Mean Return: {mean_return:.4f}")
+#         st.write(f"Standard Deviation: {std_dev:.4f}")
+#         st.write(f"Sharpe Ratio: {sharpe_ratio:.4f}")
+
+#         # VaR and CVaR
+#         var_methods = ["Historical", "Variance-Covariance", "Monte Carlo"]
+#         selected_method = st.selectbox("Select VaR Method:", var_methods)
+#         confidence_level = st.slider("Confidence Level for VaR/CVaR:", 90, 99, 95, key="confidence_level_metrics")
+#         if st.button("Calculate VaR"):
+#             if 'portfolio_returns' in st.session_state and st.session_state['portfolio_returns'].size:
+#         # Plotting the returns
+#             # plot_returns(st.session_state['portfolio_returns'])
+#                 plot_returns(returns)
+
+#         # Calculating VaR
+#         var = calculate_var(st.session_state['portfolio_returns'], confidence_level, selected_method, portfolio_value)
+#         # var = calculate_var(returns, confidence_level)
+#         cvar = calculate_cvar(returns, confidence_level, selected_method, portfolio_value)
+#         st.write(f"### VaR and CVaR")
+#         st.write(f"VaR at {confidence_level}%: {var:.4f}")
+#         st.write(f"CVaR at {confidence_level}%: {cvar:.4f}")
+
+#         # Plot returns and CVaR
+        
+#         plot_cvar_distribution(returns, var, cvar)
+
+#         # Correlation heatmap
+#         plot_correlation_heatmap(st.session_state['all_returns'])
+
+#         # Expanded Risk Metrics
+#         st.write(f"### Expanded Risk Metrics")
+
+#         # Cumulative returns for drawdown analysis
+#         portfolio_cumulative_returns = np.cumsum(returns)
+
+#         # Assume market returns as a proxy (e.g., S&P 500 index)
+#         market_name = st.text_input("Enter Market Ticker (e.g., SPY):", value="SPY", key="market_ticker_metrics")
+#         market_data, error_message = fetch_stock_data(market_name, start_date.isoformat(), end_date.isoformat(), API_KEY)
+#         if market_data is not None:
+#             market_returns = np.diff(market_data) / market_data[:-1]
+
+#             # Beta calculation
+#             beta = calculate_beta(returns, market_returns)
+#             st.write(f"**Portfolio Beta (Systematic Risk):** {beta:.4f}")
+#         else:
+#             st.error(f"Market data could not be fetched: {error_message}")
+
+#         # Max Drawdown calculation
+#         max_drawdown = calculate_max_drawdown(portfolio_cumulative_returns)
+#         st.write(f"**Maximum Drawdown:** {max_drawdown:.4f}")
+
+#         # Sortino Ratio calculation
+#         sortino_ratio = calculate_sortino_ratio(returns, risk_free_rate=0.02)
+#         st.write(f"**Sortino Ratio (Downside Risk-Adjusted Return):** {sortino_ratio:.4f}")
+#     else:
+#         st.error("Please fetch data first.")
+
+if st.button("Calculate Metrics"):
+    if 'portfolio_returns' in st.session_state and len(st.session_state['portfolio_returns']) > 0:
+        returns = st.session_state['portfolio_returns']
         mean_return, std_dev, sharpe_ratio = calculate_metrics(returns)
-        st.write(f"### Basic Metrics")
+
+        st.write(f"### Portfolio Metrics")
         st.write(f"Mean Return: {mean_return:.4f}")
         st.write(f"Standard Deviation: {std_dev:.4f}")
         st.write(f"Sharpe Ratio: {sharpe_ratio:.4f}")
@@ -221,53 +417,32 @@ if st.button("Calculate Metrics"):
         # VaR and CVaR
         var_methods = ["Historical", "Variance-Covariance", "Monte Carlo"]
         selected_method = st.selectbox("Select VaR Method:", var_methods)
-        confidence_level = st.slider("Confidence Level for VaR/CVaR:", 90, 99, 95, key="confidence_level_metrics")
-        if st.button("Calculate VaR"):
-            if 'portfolio_returns' in st.session_state and st.session_state['portfolio_returns'].size:
-        # Plotting the returns
-            # plot_returns(st.session_state['portfolio_returns'])
-                plot_returns(returns)
+        confidence_level = st.slider("Confidence Level for VaR/CVaR:", 90, 99, 95)
 
-        # Calculating VaR
-        var = calculate_var(st.session_state['portfolio_returns'], confidence_level, selected_method, portfolio_value)
-        # var = calculate_var(returns, confidence_level)
+        var = calculate_var(returns, confidence_level, selected_method, portfolio_value)
         cvar = calculate_cvar(returns, confidence_level, selected_method, portfolio_value)
+
         st.write(f"### VaR and CVaR")
-        st.write(f"VaR at {confidence_level}%: {var:.4f}")
-        st.write(f"CVaR at {confidence_level}%: {cvar:.4f}")
-
-        # Plot returns and CVaR
-        
-        plot_cvar_distribution(returns, var, cvar)
-
-        # Correlation heatmap
-        plot_correlation_heatmap(st.session_state['all_returns'])
-
-        # Expanded Risk Metrics
-        st.write(f"### Expanded Risk Metrics")
-
-        # Cumulative returns for drawdown analysis
-        portfolio_cumulative_returns = np.cumsum(returns)
-
-        # Assume market returns as a proxy (e.g., S&P 500 index)
-        market_name = st.text_input("Enter Market Ticker (e.g., SPY):", value="SPY", key="market_ticker_metrics")
-        market_data, error_message = fetch_stock_data(market_name, start_date.isoformat(), end_date.isoformat(), API_KEY)
-        if market_data is not None:
-            market_returns = np.diff(market_data) / market_data[:-1]
-
-            # Beta calculation
-            beta = calculate_beta(returns, market_returns)
-            st.write(f"**Portfolio Beta (Systematic Risk):** {beta:.4f}")
+        if var is not None:
+            st.write(f"VaR at {confidence_level}%: {var:.4f}")
         else:
-            st.error(f"Market data could not be fetched: {error_message}")
+            st.error("Error calculating VaR.")
 
-        # Max Drawdown calculation
-        max_drawdown = calculate_max_drawdown(portfolio_cumulative_returns)
-        st.write(f"**Maximum Drawdown:** {max_drawdown:.4f}")
+        if cvar is not None:
+            st.write(f"CVaR at {confidence_level}%: {cvar:.4f}")
+        else:
+            st.error("Error calculating CVaR.")
 
-        # Sortino Ratio calculation
-        sortino_ratio = calculate_sortino_ratio(returns, risk_free_rate=0.02)
-        st.write(f"**Sortino Ratio (Downside Risk-Adjusted Return):** {sortino_ratio:.4f}")
+        # Correlation Heatmap
+        if 'all_returns' in st.session_state and len(st.session_state['all_returns']) > 0:
+            returns_df = pd.DataFrame(st.session_state['all_returns'])
+            correlation_matrix = returns_df.corr()
+            fig = go.Figure(data=go.Heatmap(z=correlation_matrix.values,
+                                            x=correlation_matrix.columns,
+                                            y=correlation_matrix.columns,
+                                            colorscale='viridis'))
+            fig.update_layout(title="Correlation Heatmap of Stock Returns")
+            st.plotly_chart(fig)
     else:
         st.error("Please fetch data first.")
 
