@@ -147,12 +147,25 @@ def calculate_metrics(portfolio_returns):
     return mean_return, std_dev, sharpe_ratio
 
 # VaR and CVaR calculations
-def calculate_var(returns, confidence_level):
-    var = np.percentile(returns, 100 - confidence_level)
-    return var
+def calculate_var(returns, confidence_level, method, portfolio_value):
+    if method == "Historical":
+        var = np.percentile(returns, 100 - confidence_level)
+    elif method == "Variance-Covariance":
+        mean = np.mean(returns)
+        sigma = np.std(returns)
+        z_score = -(stats.norm.ppf(1 - confidence_level / 100))
+        var = -(mean + z_score * sigma)
+    elif method == "Monte Carlo":
+        simulations = 10000
+        mean = np.mean(returns)
+        sigma = np.std(returns)
+        simulated_returns = np.random.normal(mean, sigma, simulations)
+        a = -(np.percentile(simulated_returns, 100 - confidence_level))
+        var= -(a)
+    return var * portfolio_value 
 
-def calculate_cvar(returns, confidence_level):
-    var = calculate_var(returns, confidence_level)
+def calculate_cvar(returns, confidence_level, method, portfolio_value):
+    var = calculate_var(returns, confidence_level, method, portfolio_value)
     cvar = np.mean(returns[returns <= var])
     return cvar
 
@@ -290,15 +303,25 @@ if st.button("Calculate Metrics"):
         st.write(f"Sharpe Ratio: {sharpe_ratio:.4f}")
 
         # VaR and CVaR
+        var_methods = ["Historical", "Variance-Covariance", "Monte Carlo"]
+        selected_method = st.selectbox("Select VaR Method:", var_methods)
         confidence_level = st.slider("Confidence Level for VaR/CVaR:", 90, 99, 95, key="confidence_level_metrics")
-        var = calculate_var(returns, confidence_level)
-        cvar = calculate_cvar(returns, confidence_level)
+        if st.button("Calculate VaR"):
+            if 'portfolio_returns' in st.session_state and st.session_state['portfolio_returns'].size:
+        # Plotting the returns
+            # plot_returns(st.session_state['portfolio_returns'])
+                plot_returns(returns)
+
+        # Calculating VaR
+        var = calculate_var(st.session_state['portfolio_returns'], confidence_level, selected_method, portfolio_value)
+        # var = calculate_var(returns, confidence_level)
+        cvar = calculate_cvar(returns, confidence_level, selected_method, portfolio_value)
         st.write(f"### VaR and CVaR")
         st.write(f"VaR at {confidence_level}%: {var:.4f}")
         st.write(f"CVaR at {confidence_level}%: {cvar:.4f}")
 
         # Plot returns and CVaR
-        plot_returns(returns)
+        
         plot_cvar_distribution(returns, var, cvar)
 
         # Correlation heatmap
