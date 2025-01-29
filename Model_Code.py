@@ -78,31 +78,7 @@ end_date = st.sidebar.date_input("End Date:", default_end_date)
 if start_date >= end_date:
     st.sidebar.error("Start date must be earlier than end date.")
 
-# Fetch and process stock data
-# if st.sidebar.button("Fetch Data"):
-#     if abs(sum(weights) - 100) > 0.01:
-#         st.sidebar.error("Weights must sum to 100%.")
-#     else:
-#         portfolio_returns = []
-#         all_returns = {}
-#         for i, stock_name in enumerate(stock_names):
-#             stock_data, error_message = fetch_stock_data(stock_name, start_date.isoformat(), end_date.isoformat(), API_KEY)
-#             if stock_data is not None:
-#                 returns = np.diff(stock_data) / stock_data[:-1]
-#                 weighted_returns = returns * weights[i] / 100
-#                 portfolio_returns.append(weighted_returns)
-#                 all_returns[stock_name] = returns
-#             else:
-#                 st.error(error_message)
-#                 break
 
-#         if portfolio_returns:
-#             portfolio_returns = np.sum(portfolio_returns, axis=0)
-#             st.session_state['portfolio_returns'] = portfolio_returns
-#             st.session_state['all_returns'] = all_returns
-#             st.success("Data fetched successfully!")
-#         else:
-#             st.error("Failed to fetch stock data.")
 
 # Fetch and process stock data
 if st.sidebar.button("Fetch Data"):
@@ -199,32 +175,7 @@ def plot_cvar_distribution(returns, var, cvar):
                       legend_title="Metrics")
     st.plotly_chart(fig)
 
-# Risk metric calculations
-# if st.button("Calculate Metrics"):
-#     if 'portfolio_returns' in st.session_state:
-#         returns = st.session_state['portfolio_returns']
 
-#         # Basic metrics
-#         mean_return, std_dev, sharpe_ratio = calculate_metrics(returns)
-#         st.write(f"Mean Return: {mean_return:.4f}")
-#         st.write(f"Standard Deviation: {std_dev:.4f}")
-#         st.write(f"Sharpe Ratio: {sharpe_ratio:.4f}")
-
-#         # VaR and CVaR
-#         confidence_level = st.slider("Confidence Level:", 90, 99, 95)
-#         var = calculate_var(returns, confidence_level)
-#         cvar = calculate_cvar(returns, confidence_level)
-#         st.write(f"VaR at {confidence_level}%: {var:.4f}")
-#         st.write(f"CVaR at {confidence_level}%: {cvar:.4f}")
-
-#         # Plot returns and CVaR
-#         plot_returns(returns)
-#         plot_cvar_distribution(returns, var, cvar)
-
-#         # Correlation heatmap
-#         plot_correlation_heatmap(st.session_state['all_returns'])
-#     else:
-#         st.error("Please fetch data first.")
 
 # Expanded Risk Metrics
 def calculate_beta(portfolio_returns, market_returns):
@@ -253,42 +204,7 @@ def calculate_sortino_ratio(portfolio_returns, risk_free_rate, target_return=0.0
     sortino_ratio = (mean_return - risk_free_rate) / downside_deviation if downside_deviation != 0 else 0
     return sortino_ratio
 
-# Updated workflow to calculate Expanded Risk Metrics
-# if st.button("Calculate Expanded Risk Metrics"):
-#     if 'portfolio_returns' in st.session_state:
-#         portfolio_returns = st.session_state['portfolio_returns']
 
-#         # Cumulative returns for drawdown analysis
-#         portfolio_cumulative_returns = np.cumsum(portfolio_returns)
-
-#         # Assume market returns as a proxy (e.g., S&P 500 index)
-#         market_name = st.text_input("Enter Market Ticker (e.g., SPY):", value="SPY")
-#         market_data, error_message = fetch_stock_data(market_name, start_date.isoformat(), end_date.isoformat(), API_KEY)
-#         if market_data is not None:
-#             market_returns = np.diff(market_data) / market_data[:-1]
-
-#             # Beta calculation
-#             beta = calculate_beta(portfolio_returns, market_returns)
-#             st.write(f"**Portfolio Beta (Systematic Risk):** {beta:.4f}")
-#         else:
-#             st.error(f"Market data could not be fetched: {error_message}")
-
-#         # Max Drawdown calculation
-#         max_drawdown = calculate_max_drawdown(portfolio_cumulative_returns)
-#         st.write(f"**Maximum Drawdown:** {max_drawdown:.4f}")
-
-#         # Sortino Ratio calculation
-#         sortino_ratio = calculate_sortino_ratio(portfolio_returns, risk_free_rate=0.02)
-#         st.write(f"**Sortino Ratio (Downside Risk-Adjusted Return):** {sortino_ratio:.4f}")
-
-#         # Portfolio-level VaR and CVaR
-#         confidence_level = st.slider("Confidence Level for Expanded Metrics:", 90, 99, 95)
-#         portfolio_var = calculate_var(portfolio_returns, confidence_level)
-#         portfolio_cvar = calculate_cvar(portfolio_returns, confidence_level)
-#         st.write(f"**Portfolio VaR at {confidence_level}% Confidence Level:** {portfolio_var:.4f}")
-#         st.write(f"**Portfolio CVaR at {confidence_level}% Confidence Level:** {portfolio_cvar:.4f}")
-#     else:
-#         st.error("Please fetch data first.")
 
 # Combined Risk Metrics Calculation
 if st.button("Calculate Metrics"):
@@ -448,55 +364,7 @@ def plot_portfolio_performance(portfolio_returns_before, portfolio_returns_after
     )
     st.plotly_chart(fig)
 
-# # Main optimization workflow
-# if st.sidebar.button("Run Optimization") and optimize_portfolio:
-#     if 'all_returns' in st.session_state:
-#         all_returns = st.session_state['all_returns']
 
-#         # Calculate optimized weights
-#         optimized_weights = calculate_optimized_weights(all_returns)
-
-#         # Display pie charts for weights
-#         st.write("### Portfolio Allocation Before and After Optimization")
-#         initial_weights = np.array([weight / 100 for weight in weights[:len(all_returns)]])
-#         plot_pie_charts(initial_weights, optimized_weights, list(all_returns.keys()))
-
-#         # Plot stock price time series for each stock
-#         st.write("### Stock Price Time Series")
-#         for stock_name in all_returns.keys():
-#             stock_data, _ = fetch_stock_data(stock_name, start_date.isoformat(), end_date.isoformat(), API_KEY)
-#             if stock_data is not None:
-#                 stock_df = pd.DataFrame({'close': stock_data})
-#                 stock_df.index = pd.date_range(start=start_date, periods=len(stock_data))
-#                 plot_stock_prices(stock_df, stock_name)
-
-#         # Portfolio metrics and performance
-#         returns_df = pd.DataFrame(all_returns)
-#         mean_returns = returns_df.mean()
-#         cov_matrix = returns_df.cov()
-
-#         portfolio_return_before = np.dot(initial_weights, mean_returns)
-#         portfolio_volatility_before = np.sqrt(np.dot(initial_weights.T, np.dot(cov_matrix, initial_weights)))
-#         sharpe_ratio_before = (portfolio_return_before - 0.02) / portfolio_volatility_before  # Assuming risk-free rate = 0.02
-
-#         portfolio_return_after = np.dot(optimized_weights, mean_returns)
-#         portfolio_volatility_after = np.sqrt(np.dot(optimized_weights.T, np.dot(cov_matrix, optimized_weights)))
-#         sharpe_ratio_after = (portfolio_return_after - 0.02) / portfolio_volatility_after
-
-#         st.write("### Portfolio Metrics")
-#         st.write(f"**Before Optimization:**")
-#         st.write(f"Return: {portfolio_return_before:.4f}, Volatility: {portfolio_volatility_before:.4f}, Sharpe Ratio: {sharpe_ratio_before:.4f}")
-
-#         st.write(f"**After Optimization:**")
-#         st.write(f"Return: {portfolio_return_after:.4f}, Volatility: {portfolio_volatility_after:.4f}, Sharpe Ratio: {sharpe_ratio_after:.4f}")
-
-#         # Portfolio performance comparison
-#         st.write("### Portfolio Performance Comparison")
-#         portfolio_returns_before = np.dot(returns_df.values, initial_weights)
-#         portfolio_returns_after = np.dot(returns_df.values, optimized_weights)
-#         plot_portfolio_performance(portfolio_returns_before, portfolio_returns_after)
-#     else:
-#         st.error("Please fetch data first.")
 
 
 # Efficient Frontier Calculation
