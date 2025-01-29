@@ -1,3 +1,4 @@
+
 import streamlit as st
 import numpy as np
 import pandas as pd
@@ -240,42 +241,6 @@ def plot_portfolio_performance(portfolio_returns_before, portfolio_returns_after
     st.plotly_chart(fig)
 
 
-
-# def optimize_portfolio_strategy(all_returns, strategy='sharpe', risk_free_rate=0.02):
-#     """Optimize portfolio based on the selected strategy."""
-#     returns_df = pd.DataFrame(all_returns)
-#     mean_returns = returns_df.mean()
-#     cov_matrix = returns_df.cov()
-#     num_assets = len(mean_returns)
-
-#     def negative_sharpe(weights):
-#         return -((np.dot(weights, mean_returns) - risk_free_rate) / np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights))))
-
-#     def portfolio_volatility(weights):
-#         return np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights)))
-
-#     def negative_return(weights):
-#         return -np.dot(weights, mean_returns)
-
-#     constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
-#     bounds = tuple((0, 1) for _ in range(num_assets))
-#     initial_weights = np.array(num_assets * [1.0 / num_assets])
-
-#     if strategy == 'sharpe':
-#         optimized = sco.minimize(negative_sharpe, initial_weights, method='SLSQP', bounds=bounds, constraints=constraints)
-#     elif strategy == 'min_volatility':
-#         optimized = sco.minimize(portfolio_volatility, initial_weights, method='SLSQP', bounds=bounds, constraints=constraints)
-#     elif strategy == 'max_return':
-#         optimized = sco.minimize(negative_return, initial_weights, method='SLSQP', bounds=bounds, constraints=constraints)
-
-#     # Ensure optimized weights are valid and sum to 1
-#     if optimized.success:
-#         optimized_weights = optimized.x / np.sum(optimized.x)  # Normalize weights
-#     else:
-#         optimized_weights = initial_weights  # Use initial equal weights if optimization fails
-
-#     return optimized_weights
-
 def normalize_weights(weights):
     """Normalize weights to ensure they are whole numbers summing to 100."""
     weights = np.round(weights * 100)
@@ -345,6 +310,71 @@ strategy = st.sidebar.selectbox(
     format_func=lambda x: "Max Sharpe Ratio" if x == "sharpe" else "Min Volatility" if x == "min_volatility" else "Max Return"
 )
 
+# if st.sidebar.button("Run Optimization") and optimize_portfolio:
+#     if 'all_returns' in st.session_state:
+#         all_returns = st.session_state['all_returns']
+#         results, _ = calculate_efficient_frontier(all_returns)
+
+#         optimized_weights = optimize_portfolio_strategy(all_returns, strategy=strategy)
+
+#         # 🔹 Ensure optimized weights sum exactly to 1
+#         optimized_weights /= np.sum(optimized_weights)
+
+#         # 🔹 Remove small negative values
+#         optimized_weights = np.maximum(optimized_weights, 0)
+
+#         # Convert returns data
+#         returns_df = pd.DataFrame(all_returns)
+#         mean_returns = returns_df.mean()
+#         cov_matrix = returns_df.cov()
+
+#         optimized_return = np.dot(optimized_weights, mean_returns)
+#         optimized_volatility = np.sqrt(np.dot(optimized_weights.T, np.dot(cov_matrix, optimized_weights)))
+
+#         plot_efficient_frontier(results, optimized_return, optimized_volatility)
+
+#         st.write("### Portfolio Allocation Before and After Optimization")
+#         initial_weights = np.array([weight / 100 for weight in weights[:len(all_returns)]])
+
+#         # Create DataFrames for Pie Charts
+#         df_initial = pd.DataFrame({'Stock': list(all_returns.keys()), 'Weight': initial_weights * 100})
+
+#         # 🔹 Filter out stocks with zero weight in optimized allocation
+#         optimized_df = pd.DataFrame({'Stock': list(all_returns.keys()), 'Weight': optimized_weights * 100})
+#         optimized_df = optimized_df[optimized_df["Weight"] > 0]
+
+#         # Side-by-side Pie Charts
+#         col1, col2 = st.columns(2)
+#         with col1:
+#             st.plotly_chart(px.pie(df_initial, names="Stock", values="Weight", title="Initial Portfolio Weights"))
+#         with col2:
+#             if not optimized_df.empty:
+#                 st.plotly_chart(px.pie(optimized_df, names="Stock", values="Weight", title="Optimized Portfolio Weights"))
+#             else:
+#                 st.warning("No stocks allocated in optimized portfolio. Adjust strategy.")
+
+#         # Portfolio Returns Comparison
+#         portfolio_return_before = np.dot(initial_weights, mean_returns)
+#         portfolio_volatility_before = np.sqrt(np.dot(initial_weights.T, np.dot(cov_matrix, initial_weights)))
+
+#         portfolio_returns_before = np.dot(returns_df, initial_weights)
+#         portfolio_returns_after = np.dot(returns_df, optimized_weights)
+
+#         plot_portfolio_performance(portfolio_returns_before, portfolio_returns_after)
+
+#         metrics_data = {
+#             "Metric": ["Return (%)", "Volatility (%)"],
+#             "Before Optimization": [portfolio_return_before * 100, portfolio_volatility_before * 100],
+#             "After Optimization": [optimized_return * 100, optimized_volatility * 100],
+#         }
+
+#         metrics_df = pd.DataFrame(metrics_data)
+#         st.write("### Portfolio Metrics Comparison")
+#         st.table(metrics_df)
+
+#     else:
+#         st.error("Please fetch data first.")
+
 if st.sidebar.button("Run Optimization") and optimize_portfolio:
     if 'all_returns' in st.session_state:
         all_returns = st.session_state['all_returns']
@@ -357,6 +387,9 @@ if st.sidebar.button("Run Optimization") and optimize_portfolio:
 
         # 🔹 Remove small negative values
         optimized_weights = np.maximum(optimized_weights, 0)
+
+        # Save optimized weights to session state
+        st.session_state['optimized_weights'] = optimized_weights
 
         # Convert returns data
         returns_df = pd.DataFrame(all_returns)
@@ -411,6 +444,40 @@ if st.sidebar.button("Run Optimization") and optimize_portfolio:
         st.error("Please fetch data first.")
 
 
+# def calculate_var_cvar(portfolio_returns, confidence_level=0.95):
+#     """Calculate Value at Risk (VaR) and Conditional Value at Risk (CVaR)"""
+#     sorted_returns = np.sort(portfolio_returns)
+#     index = int((1 - confidence_level) * len(sorted_returns))
+#     var = abs(sorted_returns[index])
+#     cvar = abs(sorted_returns[:index].mean())
+#     return var, cvar
+
+# st.sidebar.header("Risk Analytics")
+# risk_analysis = st.sidebar.checkbox("Run Risk Analytics")
+# confidence_level = st.sidebar.slider("Confidence Level (%)", 90, 99, 95) / 100
+
+# if st.sidebar.button("Run Risk Analytics"):
+#     if 'all_returns' in st.session_state:
+#         all_returns = st.session_state['all_returns']
+#         returns_df = pd.DataFrame(all_returns).dropna()
+        
+#         if 'optimized_weights' in st.session_state:
+#             weights = st.session_state['optimized_weights']
+#         else:
+#             weights = np.array([weight / 100 for weight in weights[:len(all_returns)]])
+        
+#         portfolio_returns = np.dot(returns_df, weights)
+#         var, cvar = calculate_var_cvar(portfolio_returns, confidence_level)
+
+#         st.write(f"### Portfolio Risk Metrics at {confidence_level * 100:.0f}% Confidence")
+#         st.metric(label="Value at Risk (VaR)", value=f"{var:.4f}")
+#         st.metric(label="Conditional Value at Risk (CVaR)", value=f"{cvar:.4f}")
+        
+#         fig = px.histogram(portfolio_returns, nbins=50, title="Portfolio Return Distribution")
+#         st.plotly_chart(fig)
+#     else:
+#         st.error("Please fetch data first.")
+
 def calculate_var_cvar(portfolio_returns, confidence_level=0.95):
     """Calculate Value at Risk (VaR) and Conditional Value at Risk (CVaR)"""
     sorted_returns = np.sort(portfolio_returns)
@@ -419,6 +486,41 @@ def calculate_var_cvar(portfolio_returns, confidence_level=0.95):
     cvar = abs(sorted_returns[:index].mean())
     return var, cvar
 
+# Sidebar configuration for risk analytics
+# st.sidebar.header("Risk Analytics")
+# risk_analysis = st.sidebar.checkbox("Run Risk Analytics")
+# confidence_level = st.sidebar.slider("Confidence Level (%)", 90, 99, 95) / 100
+
+# if st.sidebar.button("Run Risk Analytics"):
+#     if 'all_returns' in st.session_state:
+#         all_returns = st.session_state['all_returns']
+#         returns_df = pd.DataFrame(all_returns).dropna()
+        
+#         # Check if optimization is enabled and optimized weights are available
+#         if optimize_portfolio and 'optimized_weights' in st.session_state:
+#             weights = st.session_state['optimized_weights']
+#             st.write("Using optimized weights for risk analytics.")
+#         else:
+#             # Use initial weights provided by the user
+#             weights = np.array([weight / 100 for weight in weights[:len(all_returns)]])
+#             st.write("Using initial weights for risk analytics.")
+        
+#         # Calculate portfolio returns
+#         portfolio_returns = np.dot(returns_df, weights)
+        
+#         # Calculate VaR and CVaR
+#         var, cvar = calculate_var_cvar(portfolio_returns, confidence_level)
+
+#         # Display risk metrics
+#         st.write(f"### Portfolio Risk Metrics at {confidence_level * 100:.0f}% Confidence")
+#         st.metric(label="Value at Risk (VaR)", value=f"{var:.4f}")
+#         st.metric(label="Conditional Value at Risk (CVaR)", value=f"{cvar:.4f}")
+        
+#         # Plot portfolio return distribution
+#         fig = px.histogram(portfolio_returns, nbins=50, title="Portfolio Return Distribution")
+#         st.plotly_chart(fig)
+#     else:
+#         st.error("Please fetch data first.")
 st.sidebar.header("Risk Analytics")
 risk_analysis = st.sidebar.checkbox("Run Risk Analytics")
 confidence_level = st.sidebar.slider("Confidence Level (%)", 90, 99, 95) / 100
@@ -428,18 +530,27 @@ if st.sidebar.button("Run Risk Analytics"):
         all_returns = st.session_state['all_returns']
         returns_df = pd.DataFrame(all_returns).dropna()
         
-        if 'optimized_weights' in st.session_state:
+        # Check if optimization is enabled and optimized weights are available
+        if optimize_portfolio and 'optimized_weights' in st.session_state:
             weights = st.session_state['optimized_weights']
+            st.write("Using optimized weights for risk analytics.")
         else:
+            # Use initial weights provided by the user
             weights = np.array([weight / 100 for weight in weights[:len(all_returns)]])
+            st.write("Using initial weights for risk analytics.")
         
+        # Calculate portfolio returns
         portfolio_returns = np.dot(returns_df, weights)
+        
+        # Calculate VaR and CVaR
         var, cvar = calculate_var_cvar(portfolio_returns, confidence_level)
 
+        # Display risk metrics
         st.write(f"### Portfolio Risk Metrics at {confidence_level * 100:.0f}% Confidence")
         st.metric(label="Value at Risk (VaR)", value=f"{var:.4f}")
         st.metric(label="Conditional Value at Risk (CVaR)", value=f"{cvar:.4f}")
         
+        # Plot portfolio return distribution
         fig = px.histogram(portfolio_returns, nbins=50, title="Portfolio Return Distribution")
         st.plotly_chart(fig)
     else:
