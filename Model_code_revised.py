@@ -1,5 +1,3 @@
-
-
 import streamlit as st
 import numpy as np
 import pandas as pd
@@ -243,6 +241,50 @@ def plot_portfolio_performance(portfolio_returns_before, portfolio_returns_after
 
 
 
+# def optimize_portfolio_strategy(all_returns, strategy='sharpe', risk_free_rate=0.02):
+#     """Optimize portfolio based on the selected strategy."""
+#     returns_df = pd.DataFrame(all_returns)
+#     mean_returns = returns_df.mean()
+#     cov_matrix = returns_df.cov()
+#     num_assets = len(mean_returns)
+
+#     def negative_sharpe(weights):
+#         return -((np.dot(weights, mean_returns) - risk_free_rate) / np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights))))
+
+#     def portfolio_volatility(weights):
+#         return np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights)))
+
+#     def negative_return(weights):
+#         return -np.dot(weights, mean_returns)
+
+#     constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
+#     bounds = tuple((0, 1) for _ in range(num_assets))
+#     initial_weights = np.array(num_assets * [1.0 / num_assets])
+
+#     if strategy == 'sharpe':
+#         optimized = sco.minimize(negative_sharpe, initial_weights, method='SLSQP', bounds=bounds, constraints=constraints)
+#     elif strategy == 'min_volatility':
+#         optimized = sco.minimize(portfolio_volatility, initial_weights, method='SLSQP', bounds=bounds, constraints=constraints)
+#     elif strategy == 'max_return':
+#         optimized = sco.minimize(negative_return, initial_weights, method='SLSQP', bounds=bounds, constraints=constraints)
+
+#     # Ensure optimized weights are valid and sum to 1
+#     if optimized.success:
+#         optimized_weights = optimized.x / np.sum(optimized.x)  # Normalize weights
+#     else:
+#         optimized_weights = initial_weights  # Use initial equal weights if optimization fails
+
+#     return optimized_weights
+
+def normalize_weights(weights):
+    """Normalize weights to ensure they are whole numbers summing to 100."""
+    weights = np.round(weights * 100)
+    diff = 100 - np.sum(weights)
+    if diff != 0:
+        max_index = np.argmax(weights) if diff > 0 else np.argmin(weights)
+        weights[max_index] += diff
+    return weights
+
 def optimize_portfolio_strategy(all_returns, strategy='sharpe', risk_free_rate=0.02):
     """Optimize portfolio based on the selected strategy."""
     returns_df = pd.DataFrame(all_returns)
@@ -270,12 +312,8 @@ def optimize_portfolio_strategy(all_returns, strategy='sharpe', risk_free_rate=0
     elif strategy == 'max_return':
         optimized = sco.minimize(negative_return, initial_weights, method='SLSQP', bounds=bounds, constraints=constraints)
 
-    # Ensure optimized weights are valid and sum to 1
-    if optimized.success:
-        optimized_weights = optimized.x / np.sum(optimized.x)  # Normalize weights
-    else:
-        optimized_weights = initial_weights  # Use initial equal weights if optimization fails
-
+    optimized_weights = optimized.x if optimized.success else initial_weights
+    optimized_weights = normalize_weights(optimized_weights)
     return optimized_weights
 
 def plot_portfolio_performance(portfolio_returns_before, portfolio_returns_after):
