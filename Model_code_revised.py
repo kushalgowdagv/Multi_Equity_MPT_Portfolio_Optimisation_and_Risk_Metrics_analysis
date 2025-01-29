@@ -5,6 +5,8 @@ import numpy as np
 import pandas as pd
 import requests
 import plotly.express as px
+import scipy.optimize as sco
+import plotly.graph_objects as go
 from datetime import datetime, timedelta
 
 st.set_page_config(page_title="Enhanced Portfolio VaR and CVaR Calculator", layout="wide")
@@ -95,7 +97,7 @@ for i in range(n):
     with col1:
         stock_name = st.text_input(f"Stock Ticker {i + 1}:", key=f"stock_{i}")
     with col2:
-        weight = st.number_input(f"Weight (%) {i + 1}:", min_value=0.0, max_value=100.0, step=1.0, key=f"weight_{i}")
+        weight = st.number_input(f"Weight (%) {i + 1}:", min_value=0.0, max_value=100.0, step=10.0, key=f"weight_{i}")
     stock_names.append(stock_name)
     weights.append(weight)
 
@@ -120,7 +122,20 @@ if st.sidebar.button("Fetch Data"):
     stock_data_dict, all_returns, min_length = fetch_portfolio_data(stock_names, weights, start_date, end_date)
 
     if stock_data_dict:
-        portfolio_cumulative_returns, df_returns, metrics_data = calculate_portfolio_metrics(stock_data_dict, all_returns, min_length, stock_names, weights, start_date, end_date)
+        portfolio_cumulative_returns, df_returns, metrics_data = calculate_portfolio_metrics(
+            stock_data_dict, all_returns, min_length, stock_names, weights, start_date, end_date
+        )
+
+        # Save fetched data in session state for optimization use
+        st.session_state['all_returns'] = all_returns
+        st.session_state['df_returns'] = df_returns
+        st.session_state['metrics_data'] = metrics_data  # Store metrics data for later
+
+
+        # Save fetched data in session state for optimization use
+        st.session_state['all_returns'] = all_returns
+        st.session_state['df_returns'] = df_returns
+        st.session_state['metrics_data'] = metrics_data  # Store metrics data for later
 
         # Plot Stock Charts
         stock_charts = []
@@ -153,3 +168,206 @@ if st.sidebar.button("Fetch Data"):
         st.success("Data fetched successfully!")
     else:
         st.error("Failed to fetch stock data.")
+
+
+
+@st.cache_data
+def calculate_efficient_frontier(all_returns, risk_free_rate=0.00):
+    """Calculate the efficient frontier for the portfolio."""
+    returns_df = pd.DataFrame(all_returns)
+    mean_returns = returns_df.mean()
+    cov_matrix = returns_df.cov()
+    num_assets = len(mean_returns)
+
+    num_portfolios = 10000
+    results = np.zeros((3, num_portfolios))
+    weights_record = []
+
+    for i in range(num_portfolios):
+        weights = np.random.random(num_assets)
+        weights /= np.sum(weights)
+        weights_record.append(weights)
+        portfolio_return = np.dot(weights, mean_returns)
+        portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights)))
+        sharpe_ratio = (portfolio_return - risk_free_rate) / portfolio_volatility
+        results[0, i] = portfolio_return
+        results[1, i] = portfolio_volatility
+        results[2, i] = sharpe_ratio
+
+    return results, weights_record
+
+
+
+def plot_efficient_frontier(results, optimized_return, optimized_volatility):
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=results[1, :],
+        y=results[0, :],
+        mode='markers',
+        marker=dict(color=results[2, :], colorscale='Viridis', showscale=True),
+        name='Random Portfolios'
+    ))
+    fig.add_trace(go.Scatter(
+        x=[optimized_volatility],
+        y=[optimized_return],
+        mode='markers',
+        marker=dict(color='red', size=10),
+        name='Optimized Portfolio'
+    ))
+    fig.update_layout(
+        title="Efficient Frontier",
+        xaxis_title="Volatility (Risk)",
+        yaxis_title="Return",
+        legend_title="Portfolios"
+    )
+    st.plotly_chart(fig)
+
+def plot_portfolio_performance(portfolio_returns_before, portfolio_returns_after):
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        y=np.cumsum(portfolio_returns_before),
+        mode='lines',
+        name="Portfolio (Before Optimization)"
+    ))
+    fig.add_trace(go.Scatter(
+        y=np.cumsum(portfolio_returns_after),
+        mode='lines',
+        name="Portfolio (After Optimization)"
+    ))
+    fig.update_layout(
+        title="Portfolio Performance Comparison (Cumulative Returns)",
+        xaxis_title="Days",
+        yaxis_title="Cumulative Returns"
+    )
+    st.plotly_chart(fig)
+
+
+
+def optimize_portfolio_strategy(all_returns, strategy='sharpe', risk_free_rate=0.02):
+    """Optimize portfolio based on the selected strategy."""
+    returns_df = pd.DataFrame(all_returns)
+    mean_returns = returns_df.mean()
+    cov_matrix = returns_df.cov()
+    num_assets = len(mean_returns)
+
+    def negative_sharpe(weights):
+        return -((np.dot(weights, mean_returns) - risk_free_rate) / np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights))))
+
+    def portfolio_volatility(weights):
+        return np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights)))
+
+    def negative_return(weights):
+        return -np.dot(weights, mean_returns)
+
+    constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
+    bounds = tuple((0, 1) for _ in range(num_assets))
+    initial_weights = np.array(num_assets * [1.0 / num_assets])
+
+    if strategy == 'sharpe':
+        optimized = sco.minimize(negative_sharpe, initial_weights, method='SLSQP', bounds=bounds, constraints=constraints)
+    elif strategy == 'min_volatility':
+        optimized = sco.minimize(portfolio_volatility, initial_weights, method='SLSQP', bounds=bounds, constraints=constraints)
+    elif strategy == 'max_return':
+        optimized = sco.minimize(negative_return, initial_weights, method='SLSQP', bounds=bounds, constraints=constraints)
+
+    # Ensure optimized weights are valid and sum to 1
+    if optimized.success:
+        optimized_weights = optimized.x / np.sum(optimized.x)  # Normalize weights
+    else:
+        optimized_weights = initial_weights  # Use initial equal weights if optimization fails
+
+    return optimized_weights
+
+def plot_portfolio_performance(portfolio_returns_before, portfolio_returns_after):
+    """Plot cumulative portfolio returns before and after optimization."""
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        y=np.cumsum(portfolio_returns_before),
+        mode='lines',
+        name="Portfolio (Before Optimization)"
+    ))
+    fig.add_trace(go.Scatter(
+        y=np.cumsum(portfolio_returns_after),
+        mode='lines',
+        name="Portfolio (After Optimization)"
+    ))
+    fig.update_layout(
+        title="Portfolio Performance Comparison (Cumulative Returns)",
+        xaxis_title="Days",
+        yaxis_title="Cumulative Returns"
+    )
+    st.plotly_chart(fig)
+
+# Sidebar configuration for optimization
+st.sidebar.header("Portfolio Optimization")
+optimize_portfolio = st.sidebar.checkbox("Optimize Portfolio")
+strategy = st.sidebar.selectbox(
+    "Optimization Strategy:",
+    options=['sharpe', 'min_volatility', 'max_return'],
+    format_func=lambda x: "Max Sharpe Ratio" if x == "sharpe" else "Min Volatility" if x == "min_volatility" else "Max Return"
+)
+
+if st.sidebar.button("Run Optimization") and optimize_portfolio:
+    if 'all_returns' in st.session_state:
+        all_returns = st.session_state['all_returns']
+        results, _ = calculate_efficient_frontier(all_returns)
+
+        optimized_weights = optimize_portfolio_strategy(all_returns, strategy=strategy)
+
+        # 🔹 Ensure optimized weights sum exactly to 1
+        optimized_weights /= np.sum(optimized_weights)
+
+        # 🔹 Remove small negative values
+        optimized_weights = np.maximum(optimized_weights, 0)
+
+        # Convert returns data
+        returns_df = pd.DataFrame(all_returns)
+        mean_returns = returns_df.mean()
+        cov_matrix = returns_df.cov()
+
+        optimized_return = np.dot(optimized_weights, mean_returns)
+        optimized_volatility = np.sqrt(np.dot(optimized_weights.T, np.dot(cov_matrix, optimized_weights)))
+
+        plot_efficient_frontier(results, optimized_return, optimized_volatility)
+
+        st.write("### Portfolio Allocation Before and After Optimization")
+        initial_weights = np.array([weight / 100 for weight in weights[:len(all_returns)]])
+
+        # Create DataFrames for Pie Charts
+        df_initial = pd.DataFrame({'Stock': list(all_returns.keys()), 'Weight': initial_weights * 100})
+
+        # 🔹 Filter out stocks with zero weight in optimized allocation
+        optimized_df = pd.DataFrame({'Stock': list(all_returns.keys()), 'Weight': optimized_weights * 100})
+        optimized_df = optimized_df[optimized_df["Weight"] > 0]
+
+        # Side-by-side Pie Charts
+        col1, col2 = st.columns(2)
+        with col1:
+            st.plotly_chart(px.pie(df_initial, names="Stock", values="Weight", title="Initial Portfolio Weights"))
+        with col2:
+            if not optimized_df.empty:
+                st.plotly_chart(px.pie(optimized_df, names="Stock", values="Weight", title="Optimized Portfolio Weights"))
+            else:
+                st.warning("No stocks allocated in optimized portfolio. Adjust strategy.")
+
+        # Portfolio Returns Comparison
+        portfolio_return_before = np.dot(initial_weights, mean_returns)
+        portfolio_volatility_before = np.sqrt(np.dot(initial_weights.T, np.dot(cov_matrix, initial_weights)))
+
+        portfolio_returns_before = np.dot(returns_df, initial_weights)
+        portfolio_returns_after = np.dot(returns_df, optimized_weights)
+
+        plot_portfolio_performance(portfolio_returns_before, portfolio_returns_after)
+
+        metrics_data = {
+            "Metric": ["Return (%)", "Volatility (%)"],
+            "Before Optimization": [portfolio_return_before * 100, portfolio_volatility_before * 100],
+            "After Optimization": [optimized_return * 100, optimized_volatility * 100],
+        }
+
+        metrics_df = pd.DataFrame(metrics_data)
+        st.write("### Portfolio Metrics Comparison")
+        st.table(metrics_df)
+
+    else:
+        st.error("Please fetch data first.")
