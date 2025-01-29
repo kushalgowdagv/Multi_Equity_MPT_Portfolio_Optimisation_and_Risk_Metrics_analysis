@@ -381,59 +381,6 @@ if st.sidebar.button("Run Optimization") and optimize_portfolio:
         st.error("Please fetch data first.")
 
 
-
-
-# def calculate_var_cvar(portfolio_returns, confidence_level=0.95):
-#     """Calculate Value at Risk (VaR) and Conditional Value at Risk (CVaR)"""
-#     sorted_returns = np.sort(portfolio_returns)
-#     index = int((1 - confidence_level) * len(sorted_returns))
-#     var = abs(sorted_returns[index])
-#     cvar = abs(sorted_returns[:index].mean())
-#     return var, cvar
-
-
-# st.sidebar.header("Risk Analytics")
-# risk_analysis = st.sidebar.checkbox("Run Risk Analytics")
-# confidence_level = st.sidebar.slider("Confidence Level (%)", 90, 99, 95) / 100
-
-# if st.sidebar.button("Run Risk Analytics"):
-#     if 'all_returns' in st.session_state:
-#         all_returns = st.session_state['all_returns']
-#         returns_df = pd.DataFrame(all_returns).dropna()
-        
-#         # Check if optimization is enabled and optimized weights are available
-#         if optimize_portfolio and 'optimized_weights' in st.session_state:
-#             weights = st.session_state['optimized_weights']
-#             st.write("Using optimized weights for risk analytics.")
-#         else:
-#             # Use initial weights provided by the user
-#             weights = np.array([weight / 100 for weight in weights[:len(all_returns)]])
-#             st.write("Using initial weights for risk analytics.")
-        
-#         # Calculate portfolio returns
-#         portfolio_returns = np.dot(returns_df, weights)
-        
-#         # Calculate VaR and CVaR
-#         var, cvar = calculate_var_cvar(portfolio_returns, confidence_level)
-
-#         # Display risk metrics
-#         st.write(f"### Portfolio Risk Metrics at {confidence_level * 100:.0f}% Confidence")
-#         st.metric(label="Value at Risk (VaR)", value=f"{var:.4f}")
-#         st.metric(label="Conditional Value at Risk (CVaR)", value=f"{cvar:.4f}")
-        
-#         # Plot portfolio return distribution
-#         fig = px.histogram(portfolio_returns, nbins=50, title="Portfolio Return Distribution")
-#         st.plotly_chart(fig)
-#     else:
-#         st.error("Please fetch data first.")
-
-
-import numpy as np
-import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-from scipy.stats import norm
-
 def calculate_var_cvar(portfolio_returns, confidence_level=0.95):
     """Calculate Value at Risk (VaR) and Conditional Value at Risk (CVaR)"""
     sorted_returns = np.sort(portfolio_returns)
@@ -501,29 +448,7 @@ def calculate_beta(portfolio_returns, benchmark_returns):
         return np.nan
     return covariance / variance
 
-# def calculate_beta(portfolio_returns, benchmark_returns):
-#     """Calculate Beta"""
-#     covariance = np.cov(portfolio_returns, benchmark_returns)[0, 1]
-#     variance = np.var(benchmark_returns)
-#     return covariance / variance
 
-# def fetch_benchmark_data(benchmark_ticker, start_date, end_date, API_KEY):
-#     """Fetch benchmark data from the API."""
-#     # url = f"https://financialmodelingprep.com/api/v3/historical-price-full/{benchmark_ticker}?from={start_date}&to={end_date}&apikey={API_KEY}"
-#     url = f"https://financialmodelingprep.com/api/v3/quotes/index/{benchmark_ticker}?from={start_date}&to={end_date}&apikey={API_KEY}"
-
-#     try:
-#         response = requests.get(url)
-#         data = response.json()
-#         if 'historical' not in data or not data['historical']:
-#             return None, f"No data available for {benchmark_ticker} in the selected range."
-#         df = pd.DataFrame(data['historical'])
-#         df['date'] = pd.to_datetime(df['date'])
-#         df = df.sort_values('date')
-#         df['returns'] = df['close'].pct_change()
-#         return df[['date', 'returns']], None
-#     except Exception as e:
-#         return None, f"Error fetching benchmark data: {str(e)}"
 def fetch_benchmark():
     """
     Fetch all available benchmarks with symbol, name, and currency (filtered to "USD").
@@ -571,105 +496,7 @@ def fetch_benchmark_data(benchmark_ticker, start_date, end_date):
     except Exception as e:
         return None, f"Error fetching benchmark data: {str(e)}"
 
-# def fetch_benchmark_data(benchmark_symbol, start_date, end_date , API_KEY=API_KEY):
-#     """
-#     Fetch historical data for the selected benchmark symbol.
-#     """
-#     url = f"https://financialmodelingprep.com/api/v3/historical-price-full/{benchmark_symbol}?from={start_date}&to={end_date}&apikey={API_KEY}"
-#     try:
-#         response = requests.get(url)
-#         data = response.json()
-#         if 'historical' not in data or not data['historical']:
-#             return None, f"No data available for {benchmark_symbol} in the selected range."
-        
-#         # Convert to DataFrame
-#         df = pd.DataFrame(data['historical'])
-#         df['date'] = pd.to_datetime(df['date'])
-#         df = df.sort_values('date')
-#         df['returns'] = df['close'].pct_change()
-        
-#         return df[['date', 'returns']], None
-#     except Exception as e:
-#         return None, f"Error fetching benchmark data: {str(e)}"
-    
 
-# st.sidebar.header("Risk Analytics")
-# risk_analysis = st.sidebar.checkbox("Run Risk Analytics")
-# confidence_level = st.sidebar.slider("Confidence Level (%)", 90, 99, 95) / 100
-# rolling_window = st.sidebar.number_input("Rolling Volatility Window (Days):", min_value=1, value=30)
-# benchmark_ticker = st.sidebar.selectbox("Select Benchmark Index:", options=['^GSPC', '^IXIC', '^DJI'], format_func=lambda x: "S&P 500" if x == "^GSPC" else "NASDAQ" if x == "^IXIC" else "Dow Jones")
-
-# if st.sidebar.button("Run Risk Analytics"):
-#     if 'all_returns' in st.session_state:
-#         all_returns = st.session_state['all_returns']
-#         returns_df = pd.DataFrame(all_returns).dropna()
-        
-#         # Check if optimization is enabled and optimized weights are available
-#         if optimize_portfolio and 'optimized_weights' in st.session_state:
-#             weights = st.session_state['optimized_weights']
-#             st.write("Using optimized weights for risk analytics.")
-#         else:
-#             # Use initial weights provided by the user
-#             weights = np.array([weight / 100 for weight in weights[:len(all_returns)]])
-#             st.write("Using initial weights for risk analytics.")
-        
-#         # Calculate portfolio returns
-#         portfolio_returns = np.dot(returns_df, weights)
-        
-#         # Calculate VaR and CVaR
-#         var, cvar = calculate_var_cvar(portfolio_returns, confidence_level)
-
-#         # Display risk metrics
-#         st.write(f"### Portfolio Risk Metrics at {confidence_level * 100:.0f}% Confidence")
-#         st.metric(label="Value at Risk (VaR)", value=f"{var:.4f}")
-#         st.metric(label="Conditional Value at Risk (CVaR)", value=f"{cvar:.4f}")
-        
-#         # Plot portfolio return distribution
-#         fig = px.histogram(portfolio_returns, nbins=50, title="Portfolio Return Distribution")
-#         st.plotly_chart(fig)
-
-#         # VaR Calculation Methods
-#         st.write("### VaR Calculation Methods")
-#         historical_var = calculate_historical_var(portfolio_returns, confidence_level)
-#         variance_covariance_var = calculate_variance_covariance_var(portfolio_returns, confidence_level)
-#         monte_carlo_var = calculate_monte_carlo_var(portfolio_returns, confidence_level)
-
-#         st.metric(label="Historical VaR", value=f"{historical_var:.4f}")
-#         st.metric(label="Variance-Covariance VaR", value=f"{variance_covariance_var:.4f}")
-#         st.metric(label="Monte Carlo VaR", value=f"{monte_carlo_var:.4f}")
-
-#         # Expected Shortfall
-#         expected_shortfall = calculate_expected_shortfall(portfolio_returns, confidence_level)
-#         st.write("### Expected Shortfall (Conditional Drawdown at Risk)")
-#         st.metric(label="Expected Shortfall", value=f"{expected_shortfall:.4f}")
-
-#         # Maximum Drawdown
-#         max_drawdown = calculate_maximum_drawdown(portfolio_returns)
-#         st.write("### Maximum Drawdown")
-#         st.metric(label="Maximum Drawdown", value=f"{max_drawdown:.4f}")
-
-#         # Calmar Ratio
-#         calmar_ratio = calculate_calmar_ratio(portfolio_returns)
-#         st.write("### Calmar Ratio")
-#         st.metric(label="Calmar Ratio", value=f"{calmar_ratio:.4f}")
-
-#         # Rolling Volatility
-#         rolling_volatility = calculate_rolling_volatility(pd.Series(portfolio_returns), rolling_window)
-#         st.write("### Rolling Volatility")
-#         fig = px.line(rolling_volatility, title="Rolling Volatility")
-#         st.plotly_chart(fig)
-
-#         # Beta Analysis
-#         benchmark_data, error_message = fetch_benchmark_data(benchmark_ticker, start_date.isoformat(), end_date.isoformat(), API_KEY)
-#         if benchmark_data is not None:
-#             benchmark_returns = benchmark_data['returns'].dropna().values
-#             beta = calculate_beta(portfolio_returns, benchmark_returns)
-#             st.write("### Beta Analysis")
-#             st.metric(label=f"Beta (vs {benchmark_ticker})", value=f"{beta:.4f}")
-#         else:
-#             st.error(error_message)
-#     else:
-#         st.error("Please fetch data first.")
 
 st.sidebar.header("Risk Analytics")
 risk_analysis = st.sidebar.checkbox("Run Risk Analytics")
@@ -748,18 +575,7 @@ if st.sidebar.button("Run Risk Analytics"):
         fig = px.line(rolling_volatility, title="Rolling Volatility")
         st.plotly_chart(fig)
 
-        # Beta Analysis
-    #     benchmark_data, error_message = fetch_benchmark_data(benchmark_ticker, start_date.isoformat(), end_date.isoformat())
-    #     if benchmark_data is not None:
-    #         benchmark_returns = benchmark_data['returns'].dropna().values
-    #         beta = calculate_beta(portfolio_returns, benchmark_returns)
-    #         st.write("### Beta Analysis")
-    #         st.metric(label=f"Beta (vs {selected_benchmark})", value=f"{beta:.4f}")
-    #     else:
-    #         st.error(error_message)
-    # else:
-    #     st.error("Please fetch data first.")
-# Beta Analysis
+
         benchmark_data, error_message = fetch_benchmark_data(benchmark_ticker, start_date.isoformat(), end_date.isoformat())
         if benchmark_data is not None:
             benchmark_returns = benchmark_data['returns'].dropna().values
