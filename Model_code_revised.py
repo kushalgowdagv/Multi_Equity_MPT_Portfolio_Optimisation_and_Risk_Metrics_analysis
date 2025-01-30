@@ -7,6 +7,9 @@ import plotly.express as px
 import scipy.optimize as sco
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
+from scipy.stats import norm
+import yfinance as yf
+from scipy.stats import genpareto
 
 st.set_page_config(page_title="Enhanced Portfolio VaR and CVaR Calculator", layout="wide")
 
@@ -116,20 +119,18 @@ end_date = st.sidebar.date_input("End Date:", default_end_date)
 if start_date >= end_date:
     st.sidebar.error("Start date must be earlier than end date.")
 
-# Fetch and Display Data
+
+
 if st.sidebar.button("Fetch Data"):
     stock_data_dict, all_returns, min_length = fetch_portfolio_data(stock_names, weights, start_date, end_date)
 
     if stock_data_dict:
+        # Store stock_data_dict in session state
+        st.session_state['stock_data_dict'] = stock_data_dict
+
         portfolio_cumulative_returns, df_returns, metrics_data = calculate_portfolio_metrics(
             stock_data_dict, all_returns, min_length, stock_names, weights, start_date, end_date
         )
-
-        # Save fetched data in session state for optimization use
-        st.session_state['all_returns'] = all_returns
-        st.session_state['df_returns'] = df_returns
-        st.session_state['metrics_data'] = metrics_data  # Store metrics data for later
-
 
         # Save fetched data in session state for optimization use
         st.session_state['all_returns'] = all_returns
@@ -167,7 +168,6 @@ if st.sidebar.button("Fetch Data"):
         st.success("Data fetched successfully!")
     else:
         st.error("Failed to fetch stock data.")
-
 
 
 @st.cache_data
@@ -474,7 +474,6 @@ def fetch_benchmark():
     except Exception as e:
         return None, f"Error fetching benchmark data: {str(e)}"
     
-import yfinance as yf
 
 def fetch_benchmark_data(benchmark_ticker, start_date, end_date):
     """
@@ -496,7 +495,59 @@ def fetch_benchmark_data(benchmark_ticker, start_date, end_date):
     except Exception as e:
         return None, f"Error fetching benchmark data: {str(e)}"
 
+def calculate_drawdowns(portfolio_returns):
+    """Calculate drawdowns over time."""
+    cumulative_returns = np.cumprod(1 + portfolio_returns) - 1
+    peak = np.maximum.accumulate(cumulative_returns)
+    drawdown = (cumulative_returns - peak) / peak
+    return drawdown
 
+def plot_drawdowns(drawdown, dates):
+    """Plot drawdowns over time."""
+    fig = px.line(x=dates, y=drawdown, title="Portfolio Drawdown Over Time")
+    fig.update_layout(xaxis_title="Date", yaxis_title="Drawdown", showlegend=True)
+    st.plotly_chart(fig)
+
+def monte_carlo_simulation(portfolio_returns, num_simulations=10000, days=252):
+    """Simulate future portfolio returns using Monte Carlo methods."""
+    mean_return = np.mean(portfolio_returns)
+    std_dev = np.std(portfolio_returns)
+    simulated_returns = np.random.normal(mean_return, std_dev, (num_simulations, days))
+    simulated_portfolio_values = portfolio_value * (1 + simulated_returns).cumprod(axis=1)
+    return simulated_portfolio_values
+
+def plot_monte_carlo_distribution(simulated_portfolio_values):
+    """Plot the distribution of simulated portfolio values."""
+    fig = px.histogram(simulated_portfolio_values[:, -1], nbins=50, title="Monte Carlo Simulation of Portfolio Value")
+    fig.update_layout(xaxis_title="Portfolio Value", yaxis_title="Frequency")
+    st.plotly_chart(fig)
+
+
+def calculate_tail_risk(portfolio_returns, threshold_percentile=5):
+    """Analyze tail risk using Extreme Value Theory (EVT)."""
+    threshold = np.percentile(portfolio_returns, threshold_percentile)
+    tail_returns = portfolio_returns[portfolio_returns < threshold]
+    params = genpareto.fit(tail_returns)
+    return params, threshold, tail_returns
+
+def plot_tail_risk(tail_returns, threshold):
+    """Plot the tail risk distribution."""
+    fig = px.histogram(tail_returns, nbins=50, title="Tail Risk Distribution (Extreme Value Theory)")
+    fig.add_vline(x=threshold, line_dash="dash", line_color="red", annotation_text=f"Threshold: {threshold:.4f}")
+    fig.update_layout(xaxis_title="Returns", yaxis_title="Frequency")
+    st.plotly_chart(fig)
+
+def stress_test(portfolio_returns, stress_scenario):
+    """Simulate extreme market scenarios and analyze their impact."""
+    stressed_returns = portfolio_returns * stress_scenario
+    stressed_cumulative_returns = np.cumprod(1 + stressed_returns) - 1
+    return stressed_cumulative_returns
+
+def plot_stress_test(stressed_cumulative_returns, dates):
+    """Plot the impact of stress scenarios on the portfolio."""
+    fig = px.line(x=dates, y=stressed_cumulative_returns, title="Portfolio Performance Under Stress Scenario")
+    fig.update_layout(xaxis_title="Date", yaxis_title="Cumulative Returns", showlegend=True)
+    st.plotly_chart(fig)
 
 st.sidebar.header("Risk Analytics")
 risk_analysis = st.sidebar.checkbox("Run Risk Analytics")
@@ -515,9 +566,12 @@ else:
     # Extract the symbol from the selected benchmark
     benchmark_ticker = selected_benchmark.split(" - ")[0]
 
+
+
 if st.sidebar.button("Run Risk Analytics"):
-    if 'all_returns' in st.session_state:
+    if 'all_returns' in st.session_state and 'stock_data_dict' in st.session_state:
         all_returns = st.session_state['all_returns']
+        stock_data_dict = st.session_state['stock_data_dict']
         returns_df = pd.DataFrame(all_returns).dropna()
         
         # Check if optimization is enabled and optimized weights are available
@@ -535,39 +589,66 @@ if st.sidebar.button("Run Risk Analytics"):
         # Calculate VaR and CVaR
         var, cvar = calculate_var_cvar(portfolio_returns, confidence_level)
 
-        # Display risk metrics
+        # Display risk metrics in a 3x3 grid
         st.write(f"### Portfolio Risk Metrics at {confidence_level * 100:.0f}% Confidence")
-        st.metric(label="Value at Risk (VaR)", value=f"{var:.4f}")
-        st.metric(label="Conditional Value at Risk (CVaR)", value=f"{cvar:.4f}")
         
-        # Plot portfolio return distribution
-        fig = px.histogram(portfolio_returns, nbins=50, title="Portfolio Return Distribution")
+        # Row 1: VaR, CVaR, and Beta Analysis
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric(label="Value at Risk (VaR)", value=f"{var:.4f}")
+        with col2:
+            st.metric(label="Conditional Value at Risk (CVaR)", value=f"{cvar:.4f}")
+        with col3:
+            benchmark_data, error_message = fetch_benchmark_data(benchmark_ticker, start_date.isoformat(), end_date.isoformat())
+            if benchmark_data is not None:
+                benchmark_returns = benchmark_data['returns'].dropna().values
+                portfolio_returns_aligned = portfolio_returns[:len(benchmark_returns)]  # Align lengths
+                beta = calculate_beta(portfolio_returns_aligned, benchmark_returns)
+                st.metric(label=f"Beta (vs {selected_benchmark})", value=f"{beta:.4f}")
+            else:
+                st.error(error_message)
+
+        # Row 2: Historical VaR, Variance-Covariance VaR, Monte Carlo VaR
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            historical_var = calculate_historical_var(portfolio_returns, confidence_level)
+            st.metric(label="Historical VaR", value=f"{historical_var:.4f}")
+        with col2:
+            variance_covariance_var = calculate_variance_covariance_var(portfolio_returns, confidence_level)
+            st.metric(label="Variance-Covariance VaR", value=f"{variance_covariance_var:.4f}")
+        with col3:
+            monte_carlo_var = calculate_monte_carlo_var(portfolio_returns, confidence_level)
+            st.metric(label="Monte Carlo VaR", value=f"{monte_carlo_var:.4f}")
+
+        # Row 3: Calmar Ratio, Maximum Drawdown, Expected Shortfall
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            calmar_ratio = calculate_calmar_ratio(portfolio_returns)
+            st.metric(label="Calmar Ratio", value=f"{calmar_ratio:.4f}")
+        with col2:
+            max_drawdown = calculate_maximum_drawdown(portfolio_returns)
+            st.metric(label="Maximum Drawdown", value=f"{max_drawdown:.4f}")
+        with col3:
+            expected_shortfall = calculate_expected_shortfall(portfolio_returns, confidence_level)
+            st.metric(label="Expected Shortfall", value=f"{expected_shortfall:.4f}")
+
+        # Plot portfolio return distribution with VaR methods
+        st.write("### Portfolio Return Distribution with VaR Methods")
+        fig = go.Figure()
+        fig.add_trace(go.Histogram(x=portfolio_returns, nbinsx=50, name="Portfolio Returns"))
+        
+        # Add vertical lines for VaR methods
+        fig.add_vline(x=-historical_var, line_dash="dash", line_color="red", annotation_text="Historical VaR", annotation_position="top")
+        fig.add_vline(x=-variance_covariance_var, line_dash="dash", line_color="blue", annotation_text="Variance-Covariance VaR", annotation_position="top")
+        fig.add_vline(x=-monte_carlo_var, line_dash="dash", line_color="green", annotation_text="Monte Carlo VaR", annotation_position="top")
+        
+        fig.update_layout(
+            title="Portfolio Return Distribution with VaR Methods",
+            xaxis_title="Returns",
+            yaxis_title="Frequency",
+            showlegend=True
+        )
         st.plotly_chart(fig)
-
-        # VaR Calculation Methods
-        st.write("### VaR Calculation Methods")
-        historical_var = calculate_historical_var(portfolio_returns, confidence_level)
-        variance_covariance_var = calculate_variance_covariance_var(portfolio_returns, confidence_level)
-        monte_carlo_var = calculate_monte_carlo_var(portfolio_returns, confidence_level)
-
-        st.metric(label="Historical VaR", value=f"{historical_var:.4f}")
-        st.metric(label="Variance-Covariance VaR", value=f"{variance_covariance_var:.4f}")
-        st.metric(label="Monte Carlo VaR", value=f"{monte_carlo_var:.4f}")
-
-        # Expected Shortfall
-        expected_shortfall = calculate_expected_shortfall(portfolio_returns, confidence_level)
-        st.write("### Expected Shortfall (Conditional Drawdown at Risk)")
-        st.metric(label="Expected Shortfall", value=f"{expected_shortfall:.4f}")
-
-        # Maximum Drawdown
-        max_drawdown = calculate_maximum_drawdown(portfolio_returns)
-        st.write("### Maximum Drawdown")
-        st.metric(label="Maximum Drawdown", value=f"{max_drawdown:.4f}")
-
-        # Calmar Ratio
-        calmar_ratio = calculate_calmar_ratio(portfolio_returns)
-        st.write("### Calmar Ratio")
-        st.metric(label="Calmar Ratio", value=f"{calmar_ratio:.4f}")
 
         # Rolling Volatility
         rolling_volatility = calculate_rolling_volatility(pd.Series(portfolio_returns), rolling_window)
@@ -575,13 +656,28 @@ if st.sidebar.button("Run Risk Analytics"):
         fig = px.line(rolling_volatility, title="Rolling Volatility")
         st.plotly_chart(fig)
 
+        # 🔹 New: Drawdown Analysis
+        st.write("### Drawdown Analysis")
+        drawdown = calculate_drawdowns(portfolio_returns)
+        dates = stock_data_dict[stock_names[0]]['date'][1:len(drawdown)+1]  # Align dates with drawdowns
+        plot_drawdowns(drawdown, dates)
 
-        benchmark_data, error_message = fetch_benchmark_data(benchmark_ticker, start_date.isoformat(), end_date.isoformat())
-        if benchmark_data is not None:
-            benchmark_returns = benchmark_data['returns'].dropna().values
-            portfolio_returns_aligned = portfolio_returns[:len(benchmark_returns)]  # Align lengths
-            beta = calculate_beta(portfolio_returns_aligned, benchmark_returns)
-            st.write("### Beta Analysis")
-            st.metric(label=f"Beta (vs {selected_benchmark})", value=f"{beta:.4f}")
-        else:
-            st.error(error_message)
+        # 🔹 New: Monte Carlo Simulation
+        st.write("### Monte Carlo Simulation of Future Portfolio Returns")
+        simulated_portfolio_values = monte_carlo_simulation(portfolio_returns)
+        plot_monte_carlo_distribution(simulated_portfolio_values)
+
+        # 🔹 New: Tail Risk Analysis (EVT)
+        st.write("### Tail Risk Analysis (Extreme Value Theory)")
+        params, threshold, tail_returns = calculate_tail_risk(portfolio_returns)
+        st.write(f"Tail Risk Parameters (GPD): {params}")
+        plot_tail_risk(tail_returns, threshold)
+
+        # 🔹 New: Stress Testing
+        st.write("### Stress Testing (Market Crash Scenario)")
+        stress_scenario = np.random.choice([0.9, 0.8, 0.7], size=len(portfolio_returns))  # Simulate a 10-30% drop
+        stressed_cumulative_returns = stress_test(portfolio_returns, stress_scenario)
+        plot_stress_test(stressed_cumulative_returns, dates)
+
+    else:
+        st.error("Please fetch data first.")
