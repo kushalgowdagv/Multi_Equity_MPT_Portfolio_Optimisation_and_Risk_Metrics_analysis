@@ -206,7 +206,7 @@ def fetch_portfolio_data(stock_names, weights, start_date, end_date):
                 min_length = len(returns)
             all_returns[stock_name] = returns
         else:
-            return None, error_message
+            return None, None ,error_message
 
     return stock_data_dict, all_returns, min_length
 
