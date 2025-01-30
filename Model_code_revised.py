@@ -13,7 +13,7 @@ from scipy.stats import genpareto
 
 st.set_page_config(page_title="Enhanced Portfolio VaR and CVaR Calculator", layout="wide")
 
-API_KEY = '0uTB4phKEr4dHcB2zJMmVmKUcywpkxDQ'
+API_KEY = 'GzMRn53zNLe0FWXmElNdp2RakWorNyVi'
 risk_free_rate = 0.03  # 3% annual risk-free rate
 daily_risk_free_rate = risk_free_rate / 252
 trading_days = 252
