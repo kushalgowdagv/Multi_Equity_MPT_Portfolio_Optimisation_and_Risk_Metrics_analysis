@@ -18,6 +18,158 @@ risk_free_rate = 0.03  # 3% annual risk-free rate
 daily_risk_free_rate = risk_free_rate / 252
 trading_days = 252
 
+
+
+st.sidebar.markdown(
+    """
+    <div style="margin-bottom: 50px; padding-top: 20px; border-top: 1px solid #ccc; font-style: italic; text-align: center;">
+        <p>"Risk is the price of opportunity; manage it wisely, and the rewards will follow."</p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+# Add this code at the top of your Streamlit app, after setting the page config.
+
+# Custom CSS for the header
+st.markdown(
+    """
+    <style>
+    .project-title {
+        font-size: 36px !important;
+        font-weight: bold !important;
+        text-align: center;
+        color: #2E86C1;
+        margin-bottom: 10px;
+    }
+    .project-by {
+        font-size: 20px !important;
+        font-style: italic;
+        text-align: center;
+        color: #5D6D7E;
+        margin-top: 0px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# Header with the project title and your name
+st.markdown(
+    """
+    <div class="project-title">Multi-Dimensional Portfolio Risk and Performance Analysis</div>
+    <div class="project-by">Project by Kushal Gowda G V</div>
+    """,
+    unsafe_allow_html=True
+)
+
+if 'data_fetched' not in st.session_state:
+    st.session_state['data_fetched'] = False
+
+# Display introduction only if data has not been fetched
+if not st.session_state['data_fetched']:
+    st.markdown(
+        """
+        ## Introduction: How to Use the Portfolio Risk and Performance Analysis Tool
+        Welcome to the **Multi-Dimensional Portfolio Risk and Performance Analysis** tool! This application is designed to help you analyze and optimize your investment portfolio by providing detailed insights into risk metrics, performance, and optimization strategies. Below is a step-by-step guide on how to use the tool effectively.
+
+        ---
+
+        ### Step 1: **Portfolio Configuration**
+        1. **Portfolio Value**: Enter the total value of your portfolio in USD. For example, you can start with `$100,000`.
+        2. **Number of Stocks**: Use the slider to select the number of stocks in your portfolio (up to 10). For example, select `2` for a two-stock portfolio.
+        3. **Stock Tickers and Weights**:
+           - Enter the stock tickers (e.g., `AAPL` for Apple, `MSFT` for Microsoft).
+           - Assign weights to each stock as a percentage of the total portfolio. For example:
+             - `AAPL`: 60%
+             - `MSFT`: 40%
+           - Ensure the total weight adds up to 100%. If not, the tool will prompt you to adjust the weights.
+
+        ---
+
+        ### Step 2: **Date Range**
+        - Select a start and end date for the analysis. For example:
+          - Start Date: `2022-01-01`
+          - End Date: `2023-01-01`
+        - Ensure the start date is earlier than the end date.
+
+        ---
+
+        ### Step 3: **Fetch Data**
+        - Click the **"Fetch Data"** button to retrieve historical stock data for the selected tickers and date range.
+        - Once the data is fetched, the tool will display:
+          - Price movement charts for each stock.
+          - Cumulative portfolio returns.
+          - A correlation heatmap of stock returns.
+          - Key metrics such as CAGR, Volatility, and Sharpe Ratio for each stock and the portfolio.
+
+        ---
+
+        ### Step 4: **Portfolio Optimization (Optional)**
+        - If you want to optimize your portfolio, check the **"Optimize Portfolio"** checkbox.
+        - Select an optimization strategy:
+          - **Max Sharpe Ratio**: Maximizes the risk-adjusted return.
+          - **Min Volatility**: Minimizes portfolio risk.
+          - **Max Return**: Maximizes portfolio return.
+        - Click **"Run Optimization"** to calculate the optimized weights.
+        - The tool will display:
+          - The efficient frontier.
+          - A comparison of portfolio performance before and after optimization.
+          - Updated portfolio weights.
+
+        ---
+
+        ### Step 5: **Risk Analytics**
+        - Check the **"Run Risk Analytics"** checkbox to analyze portfolio risk.
+        - Select a confidence level (e.g., `95%`) and a rolling volatility window (e.g., `30 days`).
+        - Choose a benchmark index (e.g., `^GSPC` for S&P 500) for beta analysis.
+        - Click **"Run Risk Analytics"** to calculate:
+          - Value at Risk (VaR) and Conditional Value at Risk (CVaR).
+          - Historical, Variance-Covariance, and Monte Carlo VaR.
+          - Calmar Ratio, Maximum Drawdown, and Expected Shortfall.
+          - Rolling Volatility, Drawdown Analysis, and Tail Risk.
+          - Stress Testing and Monte Carlo Simulation results.
+
+        ---
+
+        ### Example Walkthrough:
+        1. **Portfolio Configuration**:
+           - Portfolio Value: `$100,000`
+           - Number of Stocks: `2`
+           - Stock Tickers: `AAPL` (60%), `MSFT` (40%)
+        2. **Date Range**:
+           - Start Date: `2022-01-01`
+           - End Date: `2023-01-01`
+        3. **Fetch Data**:
+           - Click **"Fetch Data"** to load historical data and view initial metrics.
+        4. **Optimization**:
+           - Check **"Optimize Portfolio"** and select **"Max Sharpe Ratio"**.
+           - Click **"Run Optimization"** to view optimized weights and performance.
+        5. **Risk Analytics**:
+           - Check **"Run Risk Analytics"**, set Confidence Level to `95%`, and select Benchmark Index `^GSPC`.
+           - Click **"Run Risk Analytics"** to view detailed risk metrics and simulations.
+
+        ---
+
+        #### Key Notes:
+        - If **"Optimize Portfolio"** is checked, the risk metrics will use the optimized weights. Otherwise, the initial weights will be used.
+        - The introduction will disappear once you click **"Fetch Data"**.
+
+        ---
+
+        Feel free to explore the tool and experiment with different portfolios, optimization strategies, and risk analytics. If you have any questions or feedback, connect with me using the links provided in the sidebar or footer! 🚀
+
+        ---
+
+        This introduction will vanish once you click the **"Fetch Data"** button. Happy analyzing! 📊📈
+        """,
+        unsafe_allow_html=True
+    )
+
+
+
+
+
 @st.cache_data
 def fetch_stock_data(stock_name, start_date, end_date, API_KEY):
     """Fetch historical stock data from the API."""
@@ -122,6 +274,7 @@ if start_date >= end_date:
 
 
 if st.sidebar.button("Fetch Data"):
+    st.session_state['data_fetched'] = True
     stock_data_dict, all_returns, min_length = fetch_portfolio_data(stock_names, weights, start_date, end_date)
 
     if stock_data_dict:
@@ -681,3 +834,50 @@ if st.sidebar.button("Run Risk Analytics"):
 
     else:
         st.error("Please fetch data first.")
+
+st.sidebar.title("Connect with Me")
+github_icon = "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
+linkedin_icon = "https://cdn-icons-png.flaticon.com/512/174/174857.png"
+email_icon = "https://cdn-icons-png.flaticon.com/512/732/732200.png"
+
+# Using st.markdown with HTML to include hyperlinks with images
+st.sidebar.markdown(
+    f"""
+    <div style="display: flex; justify-content: space-evenly; align-items: center;">
+        <a href="https://github.com/kushalgowdagv" target="_blank">
+            <img src="{github_icon}" width="30">
+        </a>
+        <a href="mailto:kushalgowdagv@gmail.com" target="_blank">
+            <img src="{email_icon}" width="30">
+        </a>
+        <a href="https://www.linkedin.com/in/kushalgowdagv/" target="_blank">
+            <img src="{linkedin_icon}" width="30">
+        </a>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+# ... (rest of your existing code)
+
+# Footer Section
+st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
+st.markdown(
+    """
+    <h1 style="text-align: center; margin-top: 20px;">Contact Me</h1>
+
+    <div style="display: flex; justify-content: center; align-items: center; margin-top: 20px;">
+        <a href="https://github.com/kushalgowdagv" target="_blank" style="margin-right: 15px;">
+            <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" width="40" title="GitHub">
+        </a>
+        <a href="mailto:kushalgowdagv@gmail.com" target="_blank" style="margin-right: 15px;">
+            <img src="https://cdn-icons-png.flaticon.com/512/732/732200.png" width="40" title="Email">
+        </a>
+        <a href="https://www.linkedin.com/in/kushalgowdagv/" target="_blank">
+            <img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" width="40" title="LinkedIn">
+        </a>
+    </div>
+    <p style="text-align: center; font-size: 16px; margin-top: 10px;">Feel free to connect with me on any of the platforms above!</p>
+    """,
+    unsafe_allow_html=True
+)
