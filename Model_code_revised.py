@@ -12,8 +12,8 @@ import yfinance as yf
 from scipy.stats import genpareto
 
 st.set_page_config(page_title="Enhanced Portfolio VaR and CVaR Calculator", layout="wide")
-
-API_KEY = 'GzMRn53zNLe0FWXmElNdp2RakWorNyVi'
+API_KEY = '0uTB4phKEr4dHcB2zJMmVmKUcywpkxDQ'
+# API_KEY = 'GzMRn53zNLe0FWXmElNdp2RakWorNyVi'
 risk_free_rate = 0.03  # 3% annual risk-free rate
 daily_risk_free_rate = risk_free_rate / 252
 trading_days = 252
@@ -195,7 +195,7 @@ def fetch_portfolio_data(stock_names, weights, start_date, end_date):
     stock_data_dict = {}
     all_returns = {}
     min_length = None
-
+    
     for i, stock_name in enumerate(stock_names):
         stock_data, error_message = fetch_stock_data(stock_name, start_date.isoformat(), end_date.isoformat(), API_KEY)
         if stock_data is not None:
@@ -207,7 +207,6 @@ def fetch_portfolio_data(stock_names, weights, start_date, end_date):
             all_returns[stock_name] = returns
         else:
             return None, None ,error_message
-
     return stock_data_dict, all_returns, min_length
 
 def calculate_portfolio_metrics(stock_data_dict, all_returns, min_length, stock_names, weights, start_date, end_date):
@@ -274,10 +273,12 @@ if start_date >= end_date:
 
 
 if st.sidebar.button("Fetch Data"):
-    st.session_state['data_fetched'] = True
+    
     stock_data_dict, all_returns, min_length = fetch_portfolio_data(stock_names, weights, start_date, end_date)
+    st.session_state['data_fetched'] = True
 
     if stock_data_dict:
+        
         # Store stock_data_dict in session state
         st.session_state['stock_data_dict'] = stock_data_dict
 
