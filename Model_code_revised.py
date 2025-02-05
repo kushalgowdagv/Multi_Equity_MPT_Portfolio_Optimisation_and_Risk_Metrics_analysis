@@ -170,7 +170,7 @@ if not st.session_state['data_fetched']:
 
 
 
-@st.cache_data
+# @st.cache_data
 def fetch_stock_data(stock_name, start_date, end_date, API_KEY):
     """Fetch historical stock data from the API."""
     url = f"https://financialmodelingprep.com/api/v3/historical-price-full/{stock_name}?from={start_date}&to={end_date}&apikey={API_KEY}"
