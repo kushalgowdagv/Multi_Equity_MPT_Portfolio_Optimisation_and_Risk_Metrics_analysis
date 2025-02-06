@@ -645,38 +645,98 @@ def calculate_beta(portfolio_returns, benchmark_returns):
     return covariance / variance
 
 
+# def fetch_benchmark():
+#     """
+#     Fetch all available benchmarks with symbol, name, and currency (filtered to "USD").
+#     Returns a DataFrame with benchmark data.
+#     """
+#     url = f"https://financialmodelingprep.com/api/v3/symbol/available-indexes?apikey={API_KEY}"
+#     try:
+#         response = requests.get(url)
+#         data = response.json()
+#         if not data:
+#             return None, "No benchmark data available from the API."
+        
+#         # Convert to DataFrame
+#         benchmarks_df = pd.DataFrame(data)
+        
+#         # Filter benchmarks with currency "USD"
+#         benchmarks_df = benchmarks_df[benchmarks_df['currency'] == 'USD']
+        
+#         # Select relevant columns
+#         benchmarks_df = benchmarks_df[['symbol', 'name', 'currency']]
+        
+#         return benchmarks_df, None
+#     except Exception as e:
+#         return None, f"Error fetching benchmark data: {str(e)}"
+    
+
+# def fetch_benchmark_data(benchmark_ticker, start_date, end_date):
+#     """
+#     Fetch historical data for the selected benchmark symbol using yfinance.
+#     """
+#     try:
+#         # Download historical data using yfinance
+#         benchmark_data = yf.download(benchmark_ticker, start=start_date, end=end_date)
+        
+#         # Check if data is empty
+#         if benchmark_data.empty:
+#             return None, f"No data available for {benchmark_ticker} in the selected range."
+        
+#         # Calculate daily returns
+#         benchmark_data['returns'] = benchmark_data['Close'].pct_change()
+        
+#         # Return the relevant columns
+#         return benchmark_data[['returns']], None
+#     except Exception as e:
+#         return None, f"Error fetching benchmark data: {str(e)}"
+
+
 def fetch_benchmark():
     """
     Fetch all available benchmarks with symbol, name, and currency (filtered to "USD").
-    Returns a DataFrame with benchmark data.
+    Returns a DataFrame with benchmark data or None if unavailable.
     """
     url = f"https://financialmodelingprep.com/api/v3/symbol/available-indexes?apikey={API_KEY}"
     try:
         response = requests.get(url)
         data = response.json()
-        if not data:
-            return None, "No benchmark data available from the API."
+        
+        # Ensure data is a non-empty list before passing to DataFrame
+        if not isinstance(data, list) or len(data) == 0:
+            return None, "No valid benchmark data returned from the API."
         
         # Convert to DataFrame
         benchmarks_df = pd.DataFrame(data)
         
         # Filter benchmarks with currency "USD"
+        if 'currency' not in benchmarks_df.columns:
+            return None, "Benchmark data does not contain 'currency' field."
+        
         benchmarks_df = benchmarks_df[benchmarks_df['currency'] == 'USD']
         
-        # Select relevant columns
+        # Ensure we have the columns 'symbol' and 'name'
+        required_cols = {'symbol', 'name', 'currency'}
+        if not required_cols.issubset(benchmarks_df.columns):
+            return None, "Missing required columns in benchmark data."
+        
+        # Keep only relevant columns
         benchmarks_df = benchmarks_df[['symbol', 'name', 'currency']]
         
         return benchmarks_df, None
+    
     except Exception as e:
         return None, f"Error fetching benchmark data: {str(e)}"
-    
 
 def fetch_benchmark_data(benchmark_ticker, start_date, end_date):
     """
     Fetch historical data for the selected benchmark symbol using yfinance.
     """
     try:
-        # Download historical data using yfinance
+        # Make sure the ticker is not empty
+        if not benchmark_ticker:
+            return None, "Benchmark ticker is empty or invalid."
+        
         benchmark_data = yf.download(benchmark_ticker, start=start_date, end=end_date)
         
         # Check if data is empty
@@ -686,10 +746,12 @@ def fetch_benchmark_data(benchmark_ticker, start_date, end_date):
         # Calculate daily returns
         benchmark_data['returns'] = benchmark_data['Close'].pct_change()
         
-        # Return the relevant columns
         return benchmark_data[['returns']], None
+    
     except Exception as e:
         return None, f"Error fetching benchmark data: {str(e)}"
+
+
 
 def calculate_drawdowns(portfolio_returns):
     """Calculate drawdowns over time."""
