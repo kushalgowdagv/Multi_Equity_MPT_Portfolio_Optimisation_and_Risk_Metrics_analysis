@@ -170,23 +170,6 @@ if not st.session_state['data_fetched']:
 
 
 
-# @st.cache_data
-# def fetch_stock_data(stock_name, start_date, end_date, API_KEY):
-#     """Fetch historical stock data from the API."""
-#     url = f"https://financialmodelingprep.com/api/v3/historical-price-full/{stock_name}?from={start_date}&to={end_date}&apikey={API_KEY}"
-#     try:
-#         response = requests.get(url)
-#         data = response.json()
-#         if 'historical' not in data or not data['historical']:
-#             return None, f"No data available for {stock_name} in the selected range."
-#         df = pd.DataFrame(data['historical'])
-#         df['date'] = pd.to_datetime(df['date'])
-#         df = df.sort_values('date')
-#         return df[['date', 'close']], None
-#     except Exception as e:
-#         return None, f"Error fetching stock data: {str(e)}"
-
-
 def fetch_stock_data(stock_name, start_date, end_date, API_KEY):
     """
     Fetch historical stock data from Financial Modeling Prep. 
@@ -645,98 +628,58 @@ def calculate_beta(portfolio_returns, benchmark_returns):
     return covariance / variance
 
 
-# def fetch_benchmark():
-#     """
-#     Fetch all available benchmarks with symbol, name, and currency (filtered to "USD").
-#     Returns a DataFrame with benchmark data.
-#     """
-#     url = f"https://financialmodelingprep.com/api/v3/symbol/available-indexes?apikey={API_KEY}"
-#     try:
-#         response = requests.get(url)
-#         data = response.json()
-#         if not data:
-#             return None, "No benchmark data available from the API."
-        
-#         # Convert to DataFrame
-#         benchmarks_df = pd.DataFrame(data)
-        
-#         # Filter benchmarks with currency "USD"
-#         benchmarks_df = benchmarks_df[benchmarks_df['currency'] == 'USD']
-        
-#         # Select relevant columns
-#         benchmarks_df = benchmarks_df[['symbol', 'name', 'currency']]
-        
-#         return benchmarks_df, None
-#     except Exception as e:
-#         return None, f"Error fetching benchmark data: {str(e)}"
-    
-
-# def fetch_benchmark_data(benchmark_ticker, start_date, end_date):
-#     """
-#     Fetch historical data for the selected benchmark symbol using yfinance.
-#     """
-#     try:
-#         # Download historical data using yfinance
-#         benchmark_data = yf.download(benchmark_ticker, start=start_date, end=end_date)
-        
-#         # Check if data is empty
-#         if benchmark_data.empty:
-#             return None, f"No data available for {benchmark_ticker} in the selected range."
-        
-#         # Calculate daily returns
-#         benchmark_data['returns'] = benchmark_data['Close'].pct_change()
-        
-#         # Return the relevant columns
-#         return benchmark_data[['returns']], None
-#     except Exception as e:
-#         return None, f"Error fetching benchmark data: {str(e)}"
 
 
 def fetch_benchmark():
     """
-    Fetch all available benchmarks with symbol, name, and currency (filtered to "USD").
-    Returns a DataFrame with benchmark data or None if unavailable.
+    Return a list of benchmarks in 'Name - Ticker' format.
     """
-    url = f"https://financialmodelingprep.com/api/v3/symbol/available-indexes?apikey={API_KEY}"
-    try:
-        response = requests.get(url)
-        data = response.json()
-        
-        # Ensure data is a non-empty list before passing to DataFrame
-        if not isinstance(data, list) or len(data) == 0:
-            return None, "No valid benchmark data returned from the API."
-        
-        # Convert to DataFrame
-        benchmarks_df = pd.DataFrame(data)
-        
-        # Filter benchmarks with currency "USD"
-        if 'currency' not in benchmarks_df.columns:
-            return None, "Benchmark data does not contain 'currency' field."
-        
-        benchmarks_df = benchmarks_df[benchmarks_df['currency'] == 'USD']
-        
-        # Ensure we have the columns 'symbol' and 'name'
-        required_cols = {'symbol', 'name', 'currency'}
-        if not required_cols.issubset(benchmarks_df.columns):
-            return None, "Missing required columns in benchmark data."
-        
-        # Keep only relevant columns
-        benchmarks_df = benchmarks_df[['symbol', 'name', 'currency']]
-        
-        return benchmarks_df, None
+    benchmark_dict = {
+        "S&P 500": "^GSPC",
+        "Dow Jones Industrial Average (DJIA)": "^DJI",
+        "Nasdaq Composite": "^IXIC",
+        "Russell 2000": "^RUT",
+        "S&P 100": "^OEX",
+        "Nasdaq 100": "^NDX",
+        "NYSE Composite": "^NYA",
+        "S&P MidCap 400": "^MID",
+        "FTSE 100 (UK)": "^FTSE",
+        "DAX (Germany)": "^GDAXI",
+        "CAC 40 (France)": "^FCHI",
+        "EURO STOXX 50": "^STOXX50E",
+        "IBEX 35 (Spain)": "^IBEX",
+        "Swiss Market Index (SMI)": "^SSMI",
+        "TSX Composite (Canada)": "^GSPTSE",
+        "IPC (Mexico)": "^MXX",
+        "Bovespa (Brazil)": "^BVSP",
+        "Merval (Argentina)": "^MERV",
+        "Nikkei 225 (Japan)": "^N225",
+        "Hang Seng (Hong Kong)": "^HSI",
+        "Hang Seng China Enterprises": "^HSCE",
+        "Shanghai Composite (Mainland China)": "000001.SS",
+        "Shenzhen Composite (Mainland China)": "399001.SZ",
+        "KOSPI Composite (South Korea)": "^KS11",
+        "Straits Times Index (Singapore)": "^STI",
+        "SENSEX (India)": "^BSESN",
+        "NIFTY 50 (India)": "^NSEI",
+        "Jakarta Composite (Indonesia)": "^JKSE",
+        "Taiwan Weighted Index (Taiwan)": "^TWII",
+        "S&P/ASX 200 (Australia)": "^AXJO"
+    }
     
-    except Exception as e:
-        return None, f"Error fetching benchmark data: {str(e)}"
+    # Convert to a list of strings in "Name - Ticker" format
+    benchmark_list = [f"{name} - {ticker}" for name, ticker in benchmark_dict.items()]
+    
+    # Return the list and a None for error_message
+    return benchmark_list, None
+
 
 def fetch_benchmark_data(benchmark_ticker, start_date, end_date):
     """
-    Fetch historical data for the selected benchmark symbol using yfinance.
+    Fetch historical data for the selected benchmark symbol using Yahoo Finance (yfinance).
     """
     try:
-        # Make sure the ticker is not empty
-        if not benchmark_ticker:
-            return None, "Benchmark ticker is empty or invalid."
-        
+        # Download historical data using yfinance
         benchmark_data = yf.download(benchmark_ticker, start=start_date, end=end_date)
         
         # Check if data is empty
@@ -746,11 +689,10 @@ def fetch_benchmark_data(benchmark_ticker, start_date, end_date):
         # Calculate daily returns
         benchmark_data['returns'] = benchmark_data['Close'].pct_change()
         
+        # Return the relevant columns
         return benchmark_data[['returns']], None
-    
     except Exception as e:
         return None, f"Error fetching benchmark data: {str(e)}"
-
 
 
 def calculate_drawdowns(portfolio_returns):
@@ -812,18 +754,17 @@ risk_analysis = st.sidebar.checkbox("Run Risk Analytics")
 confidence_level = st.sidebar.slider("Confidence Level (%)", 90, 99, 95) / 100
 rolling_window = st.sidebar.number_input("Rolling Volatility Window (Days):", min_value=1, value=30)
 
-# Fetch available benchmarks
-benchmarks_df, error_message = fetch_benchmark()
-if benchmarks_df is None:
+
+benchmarks_list, error_message = fetch_benchmark()
+
+if error_message:
     st.sidebar.error(error_message)
+    benchmark_ticker = '^GSPC'  # fallback
 else:
-    # Create a selectbox for benchmark selection
-    benchmark_options = benchmarks_df.apply(lambda row: f"{row['symbol']} - {row['name']}", axis=1).tolist()
-    selected_benchmark = st.sidebar.selectbox("Select Benchmark Index:", options=benchmark_options)
-
-    # Extract the symbol from the selected benchmark
-    benchmark_ticker = selected_benchmark.split(" - ")[0]
-
+    # Let the user select from the list of "Name - Ticker" strings
+    selected_benchmark = st.sidebar.selectbox("Select Benchmark Index:", options=benchmarks_list)
+    # Extract ticker by splitting on " - "
+    benchmark_ticker = selected_benchmark.split(" - ")[1]
 
 
 if st.sidebar.button("Run Risk Analytics"):
