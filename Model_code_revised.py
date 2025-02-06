@@ -319,7 +319,14 @@ if st.sidebar.button("Fetch Data"):
         # Plot Stock Charts
         stock_charts = []
         for stock_name, stock_data in stock_data_dict.items():
-            fig = px.line(stock_data, x='date', y='close', title=f'{stock_name} Price Movement')
+            stock_data.columns = stock_data.columns.map(lambda x: x[0] if isinstance(x, tuple) else x)
+
+# Rename columns explicitly
+            stock_data = stock_data.rename(columns={'date': 'Date', 'close': 'Close', 'returns': 'Returns'})
+
+# Plot Stock Charts
+            fig = px.line(stock_data, x='Date', y='Close', title=f'{stock_name} Price Movement')
+            # fig = px.line(stock_data, x='date', y='close', title=f'{stock_name} Price Movement')
             fig.update_layout(xaxis_title='Date', yaxis_title='Closing Price', showlegend=True)
             stock_charts.append(fig)
 
