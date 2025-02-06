@@ -217,6 +217,10 @@ def fetch_stock_data(stock_name, start_date, end_date, API_KEY):
 
 def calculate_cagr(start_value, end_value, periods):
     """Calculate the Compound Annual Growth Rate (CAGR)."""
+    if isinstance(start_value, pd.Series):
+        start_value = start_value.iloc[0]
+    if isinstance(end_value, pd.Series):
+        end_value = end_value.iloc[-1]
     if start_value <= 0 or end_value <= 0 or periods <= 0:
         return None  # Avoid division errors and ensure valid values
     return (end_value / start_value) ** (1 / periods) - 1
@@ -248,7 +252,7 @@ def calculate_portfolio_metrics(stock_data_dict, all_returns, min_length, stock_
     df_returns = pd.DataFrame(all_returns).dropna()
     
     years = (end_date - start_date).days / 252
-    cagr_data = [calculate_cagr(stock_data_dict[name]['close'].iloc[0], stock_data_dict[name]['close'].iloc[-1], years) for name in stock_names]
+    cagr_data = [calculate_cagr(stock_data_dict[name]['close'].iloc[0].item(), stock_data_dict[name]['close'].iloc[-1].item(), years) for name in stock_names]
     portfolio_start = sum(stock_data_dict[name]['close'].iloc[0] * (weights[i] / 100) for i, name in enumerate(stock_names))
     portfolio_end = sum(stock_data_dict[name]['close'].iloc[-1] * (weights[i] / 100) for i, name in enumerate(stock_names))
     portfolio_cagr = calculate_cagr(portfolio_start, portfolio_end, years)
