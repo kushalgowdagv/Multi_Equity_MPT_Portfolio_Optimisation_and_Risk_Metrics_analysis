@@ -349,12 +349,12 @@ if st.sidebar.button("Fetch Data"):
 
         # Metrics Table
         metrics_df = pd.DataFrame(metrics_data)
-        # st.dataframe(metrics_df.style.format({"CAGR": "{:.4f}", "Volatility": "{:.4f}", "Sharpe Ratio": "{:.4f}"}))
+        st.dataframe(metrics_df.style.format({"CAGR": "{:.4f}", "Volatility": "{:.4f}", "Sharpe Ratio": "{:.4f}"}))
 
-        metrics_df = metrics_df.apply(pd.to_numeric, errors='coerce')
+        # metrics_df = metrics_df.apply(pd.to_numeric, errors='coerce')
 
 
-        st.dataframe(metrics_df.style.applymap(lambda x: f"{x:.4f}" if pd.notnull(x) else "N/A"))
+        # st.dataframe(metrics_df.style.applymap(lambda x: f"{x:.4f}" if pd.notnull(x) else "N/A"))
         st.success("Data fetched successfully!")
     else:
         st.error("Failed to fetch stock data.")
