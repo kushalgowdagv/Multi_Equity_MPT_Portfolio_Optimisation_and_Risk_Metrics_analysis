@@ -211,9 +211,16 @@ def fetch_stock_data(stock_name, start_date, end_date, API_KEY):
         return fallback_data, None
 
 
+# def calculate_cagr(start_value, end_value, periods):
+#     """Calculate the Compound Annual Growth Rate (CAGR)."""
+#     return (end_value / start_value) ** (1 / periods) - 1 if periods > 0 else np.nan
+
 def calculate_cagr(start_value, end_value, periods):
     """Calculate the Compound Annual Growth Rate (CAGR)."""
-    return (end_value / start_value) ** (1 / periods) - 1 if periods > 0 else np.nan
+    if start_value <= 0 or end_value <= 0 or periods <= 0:
+        return None  # Avoid division errors and ensure valid values
+    return (end_value / start_value) ** (1 / periods) - 1
+
 
 def fetch_portfolio_data(stock_names, weights, start_date, end_date):
     """Fetch stock data and calculate portfolio returns."""
