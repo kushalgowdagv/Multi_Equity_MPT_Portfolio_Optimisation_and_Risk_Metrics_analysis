@@ -349,6 +349,11 @@ if st.sidebar.button("Fetch Data"):
 
         # Metrics Table
         metrics_df = pd.DataFrame(metrics_data)
+        metrics_df["CAGR"] = pd.to_numeric(metrics_df["CAGR"], errors='coerce')
+        metrics_df["Volatility"] = pd.to_numeric(metrics_df["Volatility"], errors='coerce')
+        metrics_df["Sharpe Ratio"] = pd.to_numeric(metrics_df["Sharpe Ratio"], errors='coerce')
+
+        
         st.dataframe(metrics_df.style.format({"CAGR": "{:.4f}", "Volatility": "{:.4f}", "Sharpe Ratio": "{:.4f}"}))
 
         # metrics_df = metrics_df.apply(pd.to_numeric, errors='coerce')
