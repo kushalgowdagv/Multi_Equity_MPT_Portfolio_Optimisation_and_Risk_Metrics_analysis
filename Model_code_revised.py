@@ -171,20 +171,62 @@ if not st.session_state['data_fetched']:
 
 
 # @st.cache_data
+# def fetch_stock_data(stock_name, start_date, end_date, API_KEY):
+#     """Fetch historical stock data from the API."""
+#     url = f"https://financialmodelingprep.com/api/v3/historical-price-full/{stock_name}?from={start_date}&to={end_date}&apikey={API_KEY}"
+#     try:
+#         response = requests.get(url)
+#         data = response.json()
+#         if 'historical' not in data or not data['historical']:
+#             return None, f"No data available for {stock_name} in the selected range."
+#         df = pd.DataFrame(data['historical'])
+#         df['date'] = pd.to_datetime(df['date'])
+#         df = df.sort_values('date')
+#         return df[['date', 'close']], None
+#     except Exception as e:
+#         return None, f"Error fetching stock data: {str(e)}"
+
+
 def fetch_stock_data(stock_name, start_date, end_date, API_KEY):
-    """Fetch historical stock data from the API."""
+    """
+    Fetch historical stock data from Financial Modeling Prep. 
+    If no data is returned, fallback to yfinance.
+    """
     url = f"https://financialmodelingprep.com/api/v3/historical-price-full/{stock_name}?from={start_date}&to={end_date}&apikey={API_KEY}"
     try:
         response = requests.get(url)
         data = response.json()
+        
+        # Check if FMP returned any valid data
         if 'historical' not in data or not data['historical']:
-            return None, f"No data available for {stock_name} in the selected range."
+            # Fallback to yfinance
+            fallback_data = yf.download(stock_name, start=start_date, end=end_date)
+            if fallback_data.empty:
+                return None, f"No data available from FMP or yfinance for {stock_name}."
+            
+            # Prepare dataframe to match the format used elsewhere
+            fallback_data.reset_index(inplace=True)
+            fallback_data.rename(columns={'Date': 'date', 'Close': 'close'}, inplace=True)
+            fallback_data = fallback_data[['date', 'close']]
+            return fallback_data, None
+        
+        # If FMP returns data
         df = pd.DataFrame(data['historical'])
         df['date'] = pd.to_datetime(df['date'])
         df = df.sort_values('date')
         return df[['date', 'close']], None
+    
     except Exception as e:
-        return None, f"Error fetching stock data: {str(e)}"
+        # Also fallback to yfinance if there's an exception calling FMP
+        fallback_data = yf.download(stock_name, start=start_date, end=end_date)
+        if fallback_data.empty:
+            return None, f"Error fetching stock data from FMP and no data on yfinance: {str(e)}"
+        
+        fallback_data.reset_index(inplace=True)
+        fallback_data.rename(columns={'Date': 'date', 'Close': 'close'}, inplace=True)
+        fallback_data = fallback_data[['date', 'close']]
+        return fallback_data, None
+
 
 def calculate_cagr(start_value, end_value, periods):
     """Calculate the Compound Annual Growth Rate (CAGR)."""
